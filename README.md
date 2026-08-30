@@ -1,9 +1,19 @@
-# finance — stage 1
+# finance
 
-Backend for monthly import of Pekao bank statements, categorization, and statistics.
-Stage 1 is API-only. Frontend comes in stage 2.
+Backend for monthly import of Pekao bank statements, categorization, and statistics, with a
+small React + TypeScript frontend (`frontend/`) for import, the review queue, and monthly stats.
 
 Compiles and passes tests on Java 25 (`./gradlew test`).
+
+## Running locally
+
+**Full stack (Docker):** `docker compose up --build` — builds the frontend, bundles it into the
+Spring Boot jar as static content, and serves everything from `http://localhost:8080`. Needs a
+`.env` with `FINANCE_DB_PASSWORD` and `OLLAMA_API_KEY`.
+
+**Frontend dev server (hot reload):** run the backend separately (`./gradlew bootRun`, or
+`docker compose up finance-db finance-app`), then in `frontend/`: `npm install && npm run dev`.
+Vite proxies `/api` to `http://localhost:8080`, so no CORS setup is needed.
 
 ## Import pipeline
 
@@ -47,7 +57,9 @@ it costs zero API calls.
 ## Endpoints
 
 | Method | Path                                              | Description                                               |
-|--------|---------------------------------------------------|-----------------------------------------------------------|
+| ------ | ------------------------------------------------- | --------------------------------------------------------- |
+| GET    | `/api/accounts`                                   | active accounts, for the import account picker            |
+| GET    | `/api/categories`                                 | category enum as `{name,label}` pairs                     |
 | POST   | `/api/import?accountId=1`                         | multipart `file` — import a statement                     |
 | GET    | `/api/review`                                     | open questions awaiting resolution                        |
 | POST   | `/api/review/{id}`                                | `{"category":"FRIDGE","kind":"EXPENSE","learnRule":true}` |

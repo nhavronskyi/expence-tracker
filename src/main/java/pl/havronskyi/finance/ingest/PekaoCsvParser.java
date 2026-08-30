@@ -36,7 +36,7 @@ public class PekaoCsvParser implements StatementParser {
      * "-1 234,56" -> -123456. No double, no BigDecimal.doubleValue().
      */
     static long parseAmountMinor(String raw) {
-        String s = raw.replace("\u00A0", "").replace(" ", "").trim();
+        String s = raw.replace(" ", "").replace(" ", "").trim();
         if (s.isEmpty()) throw new IllegalArgumentException("Pusta kwota");
         boolean negative = s.startsWith("-");
         s = s.replace("-", "").replace("+", "");
@@ -61,6 +61,16 @@ public class PekaoCsvParser implements StatementParser {
         return m.find() ? m.group(1) : "";
     }
 
+    /**
+     * Pekao exports account numbers Excel-escaped with a leading apostrophe
+     * and no PL prefix, e.g. 'wxyz...426 - strip that so it exact-matches account.iban.
+     */
+    static String stripAccountNumber(String s) {
+        if (s == null) return "";
+        String t = s.trim();
+        return t.startsWith("'") ? t.substring(1) : t;
+    }
+
     private static Map<String, Integer> indexHeader(String[] header) {
         Map<String, Integer> idx = new HashMap<>();
         for (int i = 0; i < header.length; i++) {
@@ -70,7 +80,7 @@ public class PekaoCsvParser implements StatementParser {
     }
 
     private static String normalizeHeader(String h) {
-        return h == null ? "" : h.replace("\uFEFF", "").trim().toLowerCase();
+        return h == null ? "" : h.replace("﻿", "").trim().toLowerCase();
     }
 
     private static String value(String[] line, Map<String, Integer> idx, String columnName) {
@@ -138,12 +148,17 @@ public class PekaoCsvParser implements StatementParser {
         String amountRaw = value(line, idx, cfg.columns().get("amount"));
         String currency = value(line, idx, cfg.columns().get("currency"));
         String party = value(line, idx, cfg.columns().get("counterparty"));
-        String partyIban = value(line, idx, cfg.columns().get("counterparty-iban"));
+        String sourceIban = stripAccountNumber(value(line, idx, cfg.columns().get("counterparty-iban-source")));
+        String destIban = stripAccountNumber(value(line, idx, cfg.columns().get("counterparty-iban-dest")));
         String desc = value(line, idx, cfg.columns().get("description"));
 
         LocalDate txnDate = LocalDate.parse(txnDateRaw, fmt);
         LocalDate booked = bookedRaw.isBlank() ? txnDate : LocalDate.parse(bookedRaw, fmt);
+        long amountMinor = parseAmountMinor(amountRaw);
 
+        // Negative (debit): money left FROM the source account, so the destination is
+        // the counterparty. Positive (credit): the reverse.
+        String partyIban = amountMinor < 0 ? destIban : sourceIban;
         if (partyIban.isBlank()) {
             partyIban = extractIban(desc);
         }
@@ -153,7 +168,7 @@ public class PekaoCsvParser implements StatementParser {
                 String.join(cfg.delimiter(), line),
                 txnDate,
                 booked,
-                parseAmountMinor(amountRaw),
+                amountMinor,
                 currency.isBlank() ? "PLN" : currency.trim().toUpperCase(),
                 party.trim(),
                 partyIban,

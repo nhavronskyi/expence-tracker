@@ -30,15 +30,16 @@ finance:
     api-key: ${OLLAMA_API_KEY:}
     batch-size: 25
   pekao:
-    # Column names from the CSV header. TO BE SET after inspecting a real file.
-    charset: windows-1250
+    # Column names from Pekao's "Lista operacji" CSV export.
+    charset: UTF-8
     delimiter: ";"
     date-format: dd.MM.yyyy
     columns:
-      txn-date: "Data transakcji"
+      txn-date: "Data waluty"
       booked-date: "Data księgowania"
       amount: "Kwota operacji"
       currency: "Waluta"
-      counterparty: "Nazwa kontrahenta"
-      counterparty-iban: "Rachunek kontrahenta"
-      description: "Tytuł operacji"
+      counterparty: "Nadawca / Odbiorca"
+      counterparty-iban-source: "Rachunek źródłowy"
+      counterparty-iban-dest: "Rachunek docelowy"
+      description: "Tytułem"

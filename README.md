@@ -71,12 +71,9 @@ the numbers don't pretend to be complete when they aren't.
 
 ## What needs to be configured before the first import
 
-1. **Column mapping** in `application.yml` → `finance.pekao.columns`.
-   The names in the repo are a guess — Pekao's export format isn't publicly
-   documented. They need to be swapped for the real header from an actual file.
-2. **Encoding and delimiter** — `windows-1250` and `;` are typical for a
-   Polish export, but need confirming against a real file.
-3. **Records in the `account` table** — every one of your own IBANs must be
+1. **Column mapping** in `application.yml` → `finance.pekao.columns`, matched
+   against Pekao's "Lista operacji" CSV export (`UTF-8`, `;` delimiter).
+2. **Records in the `account` table** — every one of your own IBANs must be
    there, otherwise transfers between your accounts will be counted as
    expenses.
 

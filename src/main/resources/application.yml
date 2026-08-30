@@ -1,0 +1,39 @@
+spring:
+  application.name: finance
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/finance}
+    username: ${DB_USER:finance}
+    password: ${DB_PASSWORD:finance}
+  jpa:
+    hibernate.ddl-auto: validate
+    open-in-view: false
+  flyway.enabled: true
+  servlet.multipart:
+    max-file-size: 20MB
+    max-request-size: 20MB
+
+server.port: ${PORT:8080}
+
+finance:
+  base-currency: PLN
+  # Window in days for pairing transfer legs between your own accounts.
+  transfer-match-window-days: 4
+  # Below this threshold a transaction goes to the review queue instead of being saved.
+  llm-confidence-threshold: 0.80
+  anthropic:
+    api-key: ${ANTHROPIC_API_KEY:}
+    model: claude-haiku-4-5-20251001
+    batch-size: 25
+  pekao:
+    # Column names from the CSV header. TO BE SET after inspecting a real file.
+    charset: windows-1250
+    delimiter: ";"
+    date-format: dd.MM.yyyy
+    columns:
+      txn-date: "Data transakcji"
+      booked-date: "Data księgowania"
+      amount: "Kwota operacji"
+      currency: "Waluta"
+      counterparty: "Nazwa kontrahenta"
+      counterparty-iban: "Rachunek kontrahenta"
+      description: "Tytuł operacji"

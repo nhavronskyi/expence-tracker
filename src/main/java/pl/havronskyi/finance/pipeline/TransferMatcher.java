@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 
 /**
  * DELIBERATELY WITHOUT AN LLM.
- *
+ * <p>
  * Internal transfers determine the correctness of every monthly total. A language
  * model gives no guarantee of global consistency - it might call a transfer internal
  * once and not the next time, and the totals would stop adding up with no error
@@ -37,6 +37,10 @@ public class TransferMatcher {
         this.accounts = accounts;
         this.txns = txns;
         this.props = props;
+    }
+
+    private static String normalize(String iban) {
+        return iban == null ? "" : iban.replaceAll("\\s", "").toUpperCase();
     }
 
     /**
@@ -101,9 +105,5 @@ public class TransferMatcher {
             other.setCategorySource(CategorySource.IBAN);
             txns.save(other);
         }
-    }
-
-    private static String normalize(String iban) {
-        return iban == null ? "" : iban.replaceAll("\\s", "").toUpperCase();
     }
 }

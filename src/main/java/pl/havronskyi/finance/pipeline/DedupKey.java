@@ -11,7 +11,8 @@ import java.util.HexFormat;
  */
 public final class DedupKey {
 
-    private DedupKey() { }
+    private DedupKey() {
+    }
 
     public static String of(Long accountId, LocalDate txnDate, long amountMinor,
                             String descriptionRaw, int seq) {

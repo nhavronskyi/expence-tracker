@@ -47,7 +47,7 @@ it costs zero API calls.
 ## Endpoints
 
 | Method | Path                                              | Description                                               |
-| ------ | ------------------------------------------------- | --------------------------------------------------------- |
+|--------|---------------------------------------------------|-----------------------------------------------------------|
 | POST   | `/api/import?accountId=1`                         | multipart `file` — import a statement                     |
 | GET    | `/api/review`                                     | open questions awaiting resolution                        |
 | POST   | `/api/review/{id}`                                | `{"category":"FRIDGE","kind":"EXPENSE","learnRule":true}` |

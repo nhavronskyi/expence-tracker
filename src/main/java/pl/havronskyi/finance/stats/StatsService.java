@@ -7,7 +7,10 @@ import pl.havronskyi.finance.repo.TxnRepository;
 
 import java.math.BigDecimal;
 import java.time.YearMonth;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.EnumMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -19,6 +22,10 @@ public class StatsService {
     public StatsService(TxnRepository txns, AccountRepository accounts) {
         this.txns = txns;
         this.accounts = accounts;
+    }
+
+    private static BigDecimal money(long minor) {
+        return new BigDecimal(minor).movePointLeft(2);
     }
 
     /**
@@ -85,9 +92,5 @@ public class StatsService {
                 money(transfers),
                 uncategorized,
                 warnings);
-    }
-
-    private static BigDecimal money(long minor) {
-        return new BigDecimal(minor).movePointLeft(2);
     }
 }

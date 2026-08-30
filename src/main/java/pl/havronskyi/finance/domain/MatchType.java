@@ -1,3 +1,3 @@
 package pl.havronskyi.finance.domain;
 
-public enum MatchType { EXACT, PREFIX, REGEX }
+public enum MatchType {EXACT, PREFIX, REGEX}

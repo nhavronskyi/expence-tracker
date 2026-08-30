@@ -9,5 +9,6 @@ import java.util.Optional;
 
 public interface MerchantRuleRepository extends JpaRepository<MerchantRule, Long> {
     List<MerchantRule> findAllByOrderByPriorityAsc();
+
     Optional<MerchantRule> findByMatchTypeAndPattern(MatchType matchType, String pattern);
 }

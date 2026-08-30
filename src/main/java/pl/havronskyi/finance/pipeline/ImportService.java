@@ -12,11 +12,13 @@ import pl.havronskyi.finance.ingest.StatementParser;
 import pl.havronskyi.finance.llm.CategorySuggestion;
 import pl.havronskyi.finance.llm.LlmCategorizer;
 import pl.havronskyi.finance.llm.Suggestion;
-import pl.havronskyi.finance.repo.*;
+import pl.havronskyi.finance.repo.ImportBatchRepository;
+import pl.havronskyi.finance.repo.RawTransactionRepository;
+import pl.havronskyi.finance.repo.ReviewItemRepository;
+import pl.havronskyi.finance.repo.TxnRepository;
 
 import java.io.ByteArrayInputStream;
 import java.math.BigDecimal;
-import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.*;
 import java.util.function.Function;
@@ -54,6 +56,15 @@ public class ImportService {
         this.ruleEngine = ruleEngine;
         this.llm = llm;
         this.props = props;
+    }
+
+    private static String sha256(byte[] content) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            return HexFormat.of().formatHex(md.digest(content));
+        } catch (Exception e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     @Transactional
@@ -126,7 +137,9 @@ public class ImportService {
                 duplicates, transfers, byRule, byLlm, queued);
     }
 
-    /** Deterministic step. No LLM involved here. */
+    /**
+     * Deterministic step. No LLM involved here.
+     */
     private int classifyKinds(List<Txn> batch) {
         int transfers = 0;
         for (Txn t : batch) {
@@ -209,14 +222,5 @@ public class ImportService {
             item.setSuggestions("[]");
         }
         reviews.save(item);
-    }
-
-    private static String sha256(byte[] content) {
-        try {
-            MessageDigest md = MessageDigest.getInstance("SHA-256");
-            return HexFormat.of().formatHex(md.digest(content));
-        } catch (Exception e) {
-            throw new IllegalStateException(e);
-        }
     }
 }

@@ -10,7 +10,7 @@ services:
     volumes:
       - /home/nazar/homelab/finance/db:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U finance -d finance"]
+      test: [ "CMD-SHELL", "pg_isready -U finance -d finance" ]
       interval: 10s
       timeout: 5s
       retries: 5

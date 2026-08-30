@@ -9,4 +9,5 @@ public record ImportSummary(
         int categorizedByRule,
         int categorizedByLlm,
         int queuedForReview
-) { }
+) {
+}

@@ -18,14 +18,16 @@ public interface TxnRepository extends JpaRepository<Txn, Long> {
 
     List<Txn> findByTxnDateBetween(LocalDate from, LocalDate to);
 
-    /** Candidates for pairing the other leg of an internal transfer. */
+    /**
+     * Candidates for pairing the other leg of an internal transfer.
+     */
     @Query("""
-           select t from Txn t
-           where t.transferGroup is null
-             and t.amountMinor = :amount
-             and t.accountId <> :accountId
-             and t.txnDate between :from and :to
-           """)
+            select t from Txn t
+            where t.transferGroup is null
+              and t.amountMinor = :amount
+              and t.accountId <> :accountId
+              and t.txnDate between :from and :to
+            """)
     List<Txn> findTransferCandidates(@Param("amount") long amount,
                                      @Param("accountId") Long accountId,
                                      @Param("from") LocalDate from,

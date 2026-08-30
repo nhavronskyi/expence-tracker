@@ -13,7 +13,8 @@ public record FinanceProperties(
         Anthropic anthropic,
         Pekao pekao
 ) {
-    public record Anthropic(String apiKey, String model, int batchSize) { }
+    public record Anthropic(String apiKey, String model, int batchSize) {
+    }
 
     /**
      * Column mapping lives in configuration, not in code - Pekao's export format
@@ -24,5 +25,6 @@ public record FinanceProperties(
             String delimiter,
             String dateFormat,
             Map<String, String> columns
-    ) { }
+    ) {
+    }
 }

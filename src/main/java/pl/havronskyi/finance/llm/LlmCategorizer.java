@@ -27,10 +27,10 @@ public class LlmCategorizer {
 
     private static final String SYSTEM = """
             You classify Polish bank transactions into a fixed set of personal finance categories.
-
+            
             Categories:
             %s
-
+            
             Rules:
             - Answer with JSON only. No prose, no markdown fences.
             - Format: {"results":[{"id":<int>,"ranked":[{"category":"<ENUM>","confidence":<0..1>,"reason":"<max 12 words>"}]}]}
@@ -42,7 +42,9 @@ public class LlmCategorizer {
               Auchan, Kaufland). RESTAURANTS covers on-site eating. DELIVERY covers Glovo, Pyszne, Bolt Food.
             - Never output a category outside the list.
             """;
-
+    private static final Map<String, Category> CATEGORY_BY_NAME =
+            java.util.Arrays.stream(Category.values())
+                    .collect(Collectors.toMap(Enum::name, c -> c));
     private final AnthropicClient client;
     private final FinanceProperties props;
     private final ObjectMapper mapper = new ObjectMapper();
@@ -50,6 +52,15 @@ public class LlmCategorizer {
     public LlmCategorizer(AnthropicClient client, FinanceProperties props) {
         this.client = client;
         this.props = props;
+    }
+
+    private static Category toCategory(String name) {
+        if (name == null) return null;
+        return CATEGORY_BY_NAME.get(name.trim().toUpperCase());
+    }
+
+    private static String escape(String s) {
+        return s == null ? "" : s.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", " ");
     }
 
     public List<CategorySuggestion> classify(List<Txn> txns) {
@@ -110,18 +121,5 @@ public class LlmCategorizer {
         } catch (Exception e) {
             throw new IllegalStateException("Nieparsowalna odpowiedz modelu: " + cleaned, e);
         }
-    }
-
-    private static Category toCategory(String name) {
-        if (name == null) return null;
-        return CATEGORY_BY_NAME.get(name.trim().toUpperCase());
-    }
-
-    private static final Map<String, Category> CATEGORY_BY_NAME =
-            java.util.Arrays.stream(Category.values())
-                    .collect(Collectors.toMap(Enum::name, c -> c));
-
-    private static String escape(String s) {
-        return s == null ? "" : s.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", " ");
     }
 }

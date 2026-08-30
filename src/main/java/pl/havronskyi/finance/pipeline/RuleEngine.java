@@ -9,7 +9,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.regex.Pattern;
 
-/** The layer before the LLM. Every rule that matches is a request we don't send. */
+/**
+ * The layer before the LLM. Every rule that matches is a request we don't send.
+ */
 @Service
 public class RuleEngine {
 
@@ -36,9 +38,9 @@ public class RuleEngine {
 
     private boolean matches(MerchantRule r, String norm) {
         return switch (r.getMatchType()) {
-            case EXACT  -> norm.equals(r.getPattern());
+            case EXACT -> norm.equals(r.getPattern());
             case PREFIX -> norm.startsWith(r.getPattern());
-            case REGEX  -> Pattern.compile(r.getPattern()).matcher(norm).find();
+            case REGEX -> Pattern.compile(r.getPattern()).matcher(norm).find();
         };
     }
 }

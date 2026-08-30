@@ -16,4 +16,5 @@ public record ParsedRow(
         String counterparty,
         String counterpartyIban,
         String description
-) { }
+) {
+}

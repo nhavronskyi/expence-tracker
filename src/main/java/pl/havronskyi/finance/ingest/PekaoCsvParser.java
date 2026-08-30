@@ -32,81 +32,9 @@ public class PekaoCsvParser implements StatementParser {
         this.props = props;
     }
 
-    @Override
-    public String format() {
-        return "PEKAO_CSV";
-    }
-
-    @Override
-    public List<ParsedRow> parse(InputStream in) {
-        var cfg = props.pekao();
-        var fmt = DateTimeFormatter.ofPattern(cfg.dateFormat());
-        var rows = new ArrayList<ParsedRow>();
-
-        try (Reader reader = new InputStreamReader(in, Charset.forName(cfg.charset()));
-             CSVReader csv = new CSVReaderBuilder(reader)
-                     .withCSVParser(new CSVParserBuilder()
-                             .withSeparator(cfg.delimiter().charAt(0))
-                             .build())
-                     .build()) {
-
-            String[] header = csv.readNext();
-            if (header == null) {
-                throw new IllegalArgumentException("Pusty plik CSV");
-            }
-            Map<String, Integer> idx = indexHeader(header);
-
-            String[] line;
-            int lineNo = 1;
-            while ((line = csv.readNext()) != null) {
-                lineNo++;
-                if (isBlank(line)) continue;
-                try {
-                    rows.add(toRow(line, lineNo, idx, cfg, fmt));
-                } catch (RuntimeException e) {
-                    // We don't abort the whole import over one broken row -
-                    // but we don't silently swallow the error either.
-                    log.warn("Wiersz {} pominiety: {}", lineNo, e.getMessage());
-                }
-            }
-        } catch (Exception e) {
-            throw new IllegalStateException("Nie udalo sie sparsowac pliku Pekao CSV", e);
-        }
-        return rows;
-    }
-
-    private ParsedRow toRow(String[] line, int lineNo, Map<String, Integer> idx,
-                            FinanceProperties.Pekao cfg, DateTimeFormatter fmt) {
-
-        String txnDateRaw = value(line, idx, cfg.columns().get("txn-date"));
-        String bookedRaw  = value(line, idx, cfg.columns().get("booked-date"));
-        String amountRaw  = value(line, idx, cfg.columns().get("amount"));
-        String currency   = value(line, idx, cfg.columns().get("currency"));
-        String party      = value(line, idx, cfg.columns().get("counterparty"));
-        String partyIban  = value(line, idx, cfg.columns().get("counterparty-iban"));
-        String desc       = value(line, idx, cfg.columns().get("description"));
-
-        LocalDate txnDate = LocalDate.parse(txnDateRaw, fmt);
-        LocalDate booked  = bookedRaw.isBlank() ? txnDate : LocalDate.parse(bookedRaw, fmt);
-
-        if (partyIban.isBlank()) {
-            partyIban = extractIban(desc);
-        }
-
-        return new ParsedRow(
-                lineNo,
-                String.join(cfg.delimiter(), line),
-                txnDate,
-                booked,
-                parseAmountMinor(amountRaw),
-                currency.isBlank() ? "PLN" : currency.trim().toUpperCase(),
-                party.trim(),
-                partyIban,
-                desc.trim()
-        );
-    }
-
-    /** "-1 234,56" -> -123456. No double, no BigDecimal.doubleValue(). */
+    /**
+     * "-1 234,56" -> -123456. No double, no BigDecimal.doubleValue().
+     */
     static long parseAmountMinor(String raw) {
         String s = raw.replace("\u00A0", "").replace(" ", "").trim();
         if (s.isEmpty()) throw new IllegalArgumentException("Pusta kwota");
@@ -157,5 +85,79 @@ public class PekaoCsvParser implements StatementParser {
             if (c != null && !c.isBlank()) return false;
         }
         return true;
+    }
+
+    @Override
+    public String format() {
+        return "PEKAO_CSV";
+    }
+
+    @Override
+    public List<ParsedRow> parse(InputStream in) {
+        var cfg = props.pekao();
+        var fmt = DateTimeFormatter.ofPattern(cfg.dateFormat());
+        var rows = new ArrayList<ParsedRow>();
+
+        try (Reader reader = new InputStreamReader(in, Charset.forName(cfg.charset()));
+             CSVReader csv = new CSVReaderBuilder(reader)
+                     .withCSVParser(new CSVParserBuilder()
+                             .withSeparator(cfg.delimiter().charAt(0))
+                             .build())
+                     .build()) {
+
+            String[] header = csv.readNext();
+            if (header == null) {
+                throw new IllegalArgumentException("Pusty plik CSV");
+            }
+            Map<String, Integer> idx = indexHeader(header);
+
+            String[] line;
+            int lineNo = 1;
+            while ((line = csv.readNext()) != null) {
+                lineNo++;
+                if (isBlank(line)) continue;
+                try {
+                    rows.add(toRow(line, lineNo, idx, cfg, fmt));
+                } catch (RuntimeException e) {
+                    // We don't abort the whole import over one broken row -
+                    // but we don't silently swallow the error either.
+                    log.warn("Wiersz {} pominiety: {}", lineNo, e.getMessage());
+                }
+            }
+        } catch (Exception e) {
+            throw new IllegalStateException("Nie udalo sie sparsowac pliku Pekao CSV", e);
+        }
+        return rows;
+    }
+
+    private ParsedRow toRow(String[] line, int lineNo, Map<String, Integer> idx,
+                            FinanceProperties.Pekao cfg, DateTimeFormatter fmt) {
+
+        String txnDateRaw = value(line, idx, cfg.columns().get("txn-date"));
+        String bookedRaw = value(line, idx, cfg.columns().get("booked-date"));
+        String amountRaw = value(line, idx, cfg.columns().get("amount"));
+        String currency = value(line, idx, cfg.columns().get("currency"));
+        String party = value(line, idx, cfg.columns().get("counterparty"));
+        String partyIban = value(line, idx, cfg.columns().get("counterparty-iban"));
+        String desc = value(line, idx, cfg.columns().get("description"));
+
+        LocalDate txnDate = LocalDate.parse(txnDateRaw, fmt);
+        LocalDate booked = bookedRaw.isBlank() ? txnDate : LocalDate.parse(bookedRaw, fmt);
+
+        if (partyIban.isBlank()) {
+            partyIban = extractIban(desc);
+        }
+
+        return new ParsedRow(
+                lineNo,
+                String.join(cfg.delimiter(), line),
+                txnDate,
+                booked,
+                parseAmountMinor(amountRaw),
+                currency.isBlank() ? "PLN" : currency.trim().toUpperCase(),
+                party.trim(),
+                partyIban,
+                desc.trim()
+        );
     }
 }

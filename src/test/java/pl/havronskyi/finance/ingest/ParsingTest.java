@@ -1,13 +1,13 @@
 package pl.havronskyi.finance.ingest;
 
 import org.junit.jupiter.api.Test;
-
 import pl.havronskyi.finance.pipeline.DedupKey;
 import pl.havronskyi.finance.pipeline.MerchantNormalizer;
 
 import java.time.LocalDate;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 class ParsingTest {
 
@@ -15,9 +15,9 @@ class ParsingTest {
     void parsesPolishAmountFormats() {
         assertEquals(-123456L, PekaoCsvParser.parseAmountMinor("-1 234,56"));
         assertEquals(-123456L, PekaoCsvParser.parseAmountMinor("-1.234,56"));
-        assertEquals(1200L,    PekaoCsvParser.parseAmountMinor("12,00"));
-        assertEquals(-1250L,   PekaoCsvParser.parseAmountMinor("-12,5"));
-        assertEquals(500000L,  PekaoCsvParser.parseAmountMinor("5000"));
+        assertEquals(1200L, PekaoCsvParser.parseAmountMinor("12,00"));
+        assertEquals(-1250L, PekaoCsvParser.parseAmountMinor("-12,5"));
+        assertEquals(500000L, PekaoCsvParser.parseAmountMinor("5000"));
     }
 
     @Test
@@ -38,7 +38,7 @@ class ParsingTest {
 
     @Test
     void identicalSameDayTransactionsGetDistinctKeys() {
-        String first  = DedupKey.of(1L, LocalDate.of(2026, 7, 4), -1200, "KAWA", 0);
+        String first = DedupKey.of(1L, LocalDate.of(2026, 7, 4), -1200, "KAWA", 0);
         String second = DedupKey.of(1L, LocalDate.of(2026, 7, 4), -1200, "KAWA", 1);
         assertNotEquals(first, second, "Dwie kawy po 12 zl tego samego dnia to dwie transakcje");
     }

@@ -17,4 +17,5 @@ public record MonthlyReport(
         BigDecimal excludedInternalTransfers,
         int uncategorizedCount,
         List<String> warnings
-) { }
+) {
+}

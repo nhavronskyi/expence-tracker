@@ -29,7 +29,9 @@ public class AnthropicClient {
         this.props = props;
     }
 
-    /** Returns the model's raw response text (we expect JSON). */
+    /**
+     * Returns the model's raw response text (we expect JSON).
+     */
     public String complete(String system, String userPrompt) {
         var cfg = props.anthropic();
         if (cfg.apiKey() == null || cfg.apiKey().isBlank()) {

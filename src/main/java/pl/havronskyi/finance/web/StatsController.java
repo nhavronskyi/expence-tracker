@@ -1,6 +1,9 @@
 package pl.havronskyi.finance.web;
 
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import pl.havronskyi.finance.domain.AccountScope;
 import pl.havronskyi.finance.stats.MonthlyReport;
 import pl.havronskyi.finance.stats.StatsService;
@@ -17,7 +20,9 @@ public class StatsController {
         this.statsService = statsService;
     }
 
-    /** GET /api/stats/monthly?month=2026-07&scope=PERSONAL */
+    /**
+     * GET /api/stats/monthly?month=2026-07&scope=PERSONAL
+     */
     @GetMapping("/monthly")
     public MonthlyReport monthly(@RequestParam String month,
                                  @RequestParam(defaultValue = "PERSONAL") AccountScope scope) {

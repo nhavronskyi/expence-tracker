@@ -11,6 +11,12 @@ spring:
   servlet.multipart:
     max-file-size: 20MB
     max-request-size: 20MB
+  ai:
+    ollama:
+      base-url: ${OLLAMA_BASE_URL:https://ollama.com}
+      chat:
+        options:
+          model: ${OLLAMA_MODEL:gemma4:31b-cloud}
 
 server.port: ${PORT:8080}
 
@@ -20,9 +26,8 @@ finance:
   transfer-match-window-days: 4
   # Below this threshold a transaction goes to the review queue instead of being saved.
   llm-confidence-threshold: 0.80
-  anthropic:
-    api-key: ${ANTHROPIC_API_KEY:}
-    model: claude-haiku-4-5-20251001
+  llm:
+    api-key: ${OLLAMA_API_KEY:}
     batch-size: 25
   pekao:
     # Column names from the CSV header. TO BE SET after inspecting a real file.

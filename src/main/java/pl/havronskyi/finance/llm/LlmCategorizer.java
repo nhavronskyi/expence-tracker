@@ -45,11 +45,11 @@ public class LlmCategorizer {
     private static final Map<String, Category> CATEGORY_BY_NAME =
             java.util.Arrays.stream(Category.values())
                     .collect(Collectors.toMap(Enum::name, c -> c));
-    private final AnthropicClient client;
+    private final OllamaClient client;
     private final FinanceProperties props;
     private final ObjectMapper mapper = new ObjectMapper();
 
-    public LlmCategorizer(AnthropicClient client, FinanceProperties props) {
+    public LlmCategorizer(OllamaClient client, FinanceProperties props) {
         this.client = client;
         this.props = props;
     }
@@ -65,7 +65,7 @@ public class LlmCategorizer {
 
     public List<CategorySuggestion> classify(List<Txn> txns) {
         List<CategorySuggestion> out = new ArrayList<>();
-        int batchSize = Math.max(1, props.anthropic().batchSize());
+        int batchSize = Math.max(1, props.llm().batchSize());
 
         for (int i = 0; i < txns.size(); i += batchSize) {
             List<Txn> chunk = txns.subList(i, Math.min(txns.size(), i + batchSize));

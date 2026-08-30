@@ -28,7 +28,7 @@ services:
       DB_URL: jdbc:postgresql://finance-db:5432/finance
       DB_USER: finance
       DB_PASSWORD: ${FINANCE_DB_PASSWORD:?set in .env}
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:?set in .env}
+      OLLAMA_API_KEY: ${OLLAMA_API_KEY:?set in .env}
     ports:
       - "127.0.0.1:8099:8080"   # loopback only; external exposure through NPM
     labels:

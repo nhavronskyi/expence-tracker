@@ -10,10 +10,10 @@ public record FinanceProperties(
         String baseCurrency,
         int transferMatchWindowDays,
         BigDecimal llmConfidenceThreshold,
-        Anthropic anthropic,
+        Llm llm,
         Pekao pekao
 ) {
-    public record Anthropic(String apiKey, String model, int batchSize) {
+    public record Llm(String apiKey, int batchSize) {
     }
 
     /**

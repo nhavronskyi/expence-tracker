@@ -1,24 +1,61 @@
 import { useState } from "react";
-import { getMonthlyStats } from "../api";
-import type { AccountScope, MonthlyReport } from "../types";
+import { getCategoryTransactions, getStats } from "../api";
+import type { AccountScope, CategoryTransaction, PeriodReport } from "../types";
+
+type Mode = "month" | "range";
 
 function currentMonth(): string {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 }
 
+function today(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function monthToRange(month: string): { from: string; to: string } {
+  const [yearStr, monthStr] = month.split("-");
+  const year = Number(yearStr);
+  const monthIndex = Number(monthStr) - 1;
+  const lastDay = new Date(year, monthIndex + 1, 0).getDate();
+  return {
+    from: `${yearStr}-${monthStr}-01`,
+    to: `${yearStr}-${monthStr}-${String(lastDay).padStart(2, "0")}`,
+  };
+}
+
 export function StatsPage() {
+  const [mode, setMode] = useState<Mode>("month");
   const [month, setMonth] = useState(currentMonth());
+  const [from, setFrom] = useState(today());
+  const [to, setTo] = useState(today());
   const [scope, setScope] = useState<AccountScope>("PERSONAL");
-  const [report, setReport] = useState<MonthlyReport | null>(null);
+  const [report, setReport] = useState<PeriodReport | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [categoryTxns, setCategoryTxns] = useState<CategoryTransaction[]>([]);
+  const [txnsBusy, setTxnsBusy] = useState(false);
+  const [txnsError, setTxnsError] = useState<string | null>(null);
+  const [loadedRange, setLoadedRange] = useState<{
+    from: string;
+    to: string;
+    scope: AccountScope;
+  } | null>(null);
+
   async function load() {
+    const range = mode === "month" ? monthToRange(month) : { from, to };
+    if (range.from > range.to) {
+      setError("The start date must be before the end date.");
+      return;
+    }
     setBusy(true);
     setError(null);
+    setSelectedCategory(null);
     try {
-      setReport(await getMonthlyStats(month, scope));
+      setReport(await getStats(range.from, range.to, scope));
+      setLoadedRange({ ...range, scope });
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -26,21 +63,77 @@ export function StatsPage() {
     }
   }
 
+  async function selectCategory(category: string) {
+    if (selectedCategory === category) {
+      setSelectedCategory(null);
+      return;
+    }
+    if (!loadedRange) return;
+    setSelectedCategory(category);
+    setTxnsBusy(true);
+    setTxnsError(null);
+    try {
+      setCategoryTxns(
+        await getCategoryTransactions(
+          category,
+          loadedRange.from,
+          loadedRange.to,
+          loadedRange.scope,
+        ),
+      );
+    } catch (e) {
+      setTxnsError((e as Error).message);
+    } finally {
+      setTxnsBusy(false);
+    }
+  }
+
   const categoryRows = report
     ? Object.entries(report.byCategory).sort(
-        ([, a], [, b]) => (b ?? 0) - (a ?? 0),
+        ([, a], [, b]) => Math.abs(b ?? 0) - Math.abs(a ?? 0),
       )
     : [];
 
   return (
     <section>
-      <h2>Monthly stats</h2>
+      <h2>Stats</h2>
       <div className="row">
-        <input
-          type="month"
-          value={month}
-          onChange={(e) => setMonth(e.target.value)}
-        />
+        <button
+          className={mode === "month" ? "tab tab-active" : "tab"}
+          onClick={() => setMode("month")}
+        >
+          Month
+        </button>
+        <button
+          className={mode === "range" ? "tab tab-active" : "tab"}
+          onClick={() => setMode("range")}
+        >
+          Custom range
+        </button>
+      </div>
+
+      <div className="row">
+        {mode === "month" ? (
+          <input
+            type="month"
+            value={month}
+            onChange={(e) => setMonth(e.target.value)}
+          />
+        ) : (
+          <>
+            <input
+              type="date"
+              value={from}
+              onChange={(e) => setFrom(e.target.value)}
+            />
+            <span>to</span>
+            <input
+              type="date"
+              value={to}
+              onChange={(e) => setTo(e.target.value)}
+            />
+          </>
+        )}
         <select
           value={scope}
           onChange={(e) => setScope(e.target.value as AccountScope)}
@@ -90,6 +183,14 @@ export function StatsPage() {
             </ul>
           )}
 
+          {report.nettedCounterparties.length > 0 && (
+            <ul className="netted">
+              {report.nettedCounterparties.map((n, i) => (
+                <li key={i}>{n}</li>
+              ))}
+            </ul>
+          )}
+
           <table className="summary">
             <thead>
               <tr>
@@ -99,13 +200,54 @@ export function StatsPage() {
             </thead>
             <tbody>
               {categoryRows.map(([category, amount]) => (
-                <tr key={category}>
+                <tr
+                  key={category}
+                  className="clickable-row"
+                  onClick={() => selectCategory(category)}
+                >
                   <td>{category}</td>
-                  <td>{(amount ?? 0).toFixed(2)}</td>
+                  <td className={(amount ?? 0) > 0 ? "income" : ""}>
+                    {(amount ?? 0) > 0 ? "+" : ""}
+                    {(amount ?? 0).toFixed(2)}
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
+
+          {selectedCategory && (
+            <div className="category-detail">
+              <h3>{selectedCategory} transactions</h3>
+              {txnsBusy && <p>Loading...</p>}
+              {txnsError && <p className="error">{txnsError}</p>}
+              {!txnsBusy && !txnsError && categoryTxns.length === 0 && (
+                <p>No transactions.</p>
+              )}
+              {categoryTxns.length > 0 && (
+                <table className="summary">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Merchant</th>
+                      <th>Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {categoryTxns.map((t) => (
+                      <tr key={t.txnId}>
+                        <td>{t.txnDate}</td>
+                        <td>{t.merchant}</td>
+                        <td className={t.amount > 0 ? "income" : ""}>
+                          {t.amount > 0 ? "+" : ""}
+                          {t.amount.toFixed(2)} {t.currency}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          )}
         </>
       )}
     </section>

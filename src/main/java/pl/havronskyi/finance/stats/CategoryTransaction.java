@@ -1,19 +1,17 @@
-package pl.havronskyi.finance.review;
+package pl.havronskyi.finance.stats;
 
 import pl.havronskyi.finance.domain.TxnKind;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-public record ReviewCard(
-        Long reviewId,
+public record CategoryTransaction(
         Long txnId,
+        LocalDate txnDate,
         String merchant,
         String description,
         BigDecimal amount,
         String currency,
-        LocalDate txnDate,
-        TxnKind kind,
-        String suggestionsJson
+        TxnKind kind
 ) {
 }

@@ -96,6 +96,25 @@ table.summary th {
   border-bottom: 1px solid #8884;
 }
 
+.clickable-row {
+  cursor: pointer;
+}
+
+.clickable-row:hover {
+  background: #8881;
+}
+
+.category-detail {
+  border: 1px solid #8884;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.category-detail h3 {
+  margin: 0 0 0.75rem;
+}
+
 .error {
   color: #ef4444;
 }
@@ -132,12 +151,108 @@ table.summary th {
 
 .chip {
   border-radius: 999px;
-  padding: 0.25rem 0.75rem;
+  padding: 0.35rem 0.85rem;
   font-size: 0.85rem;
+  text-align: left;
+  max-width: 100%;
 }
 
 .chip-selected {
   background: #6366f1;
   border-color: #6366f1;
   color: white;
+}
+
+.chip .reason {
+  opacity: 0.8;
+  font-weight: 400;
+}
+
+.kind-section {
+  margin-bottom: 2rem;
+}
+
+.kind-section h3 {
+  margin: 0 0 0.75rem;
+}
+
+.kind-section h3.income,
+.income {
+  color: #16a34a;
+}
+
+.amount {
+  font-weight: 700;
+}
+
+.merchant-folder {
+  border: 1px solid #8884;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+}
+
+.merchant-folder summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.merchant-folder .review-list {
+  margin-top: 1rem;
+}
+
+.merchant-folder .review-item {
+  border-style: dashed;
+}
+
+.netted {
+  color: #6366f1;
+}
+
+button.link {
+  border-color: transparent;
+  color: #6366f1;
+  padding: 0.4rem 0.2rem;
+}
+
+.new-account {
+  border: 1px dashed #8884;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.new-account .currency {
+  width: 4rem;
+}
+
+.txn-count {
+  margin-left: auto;
+  opacity: 0.7;
+  font-size: 0.85rem;
+}
+
+.progress {
+  border: 1px solid #8884;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.progress-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: #8882;
+  overflow: hidden;
+  margin-top: 0.5rem;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: #6366f1;
+  transition: width 0.3s ease;
+}
+
+button.danger {
+  color: #ef4444;
+  border-color: #ef4444;
 }

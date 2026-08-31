@@ -1,8 +1,11 @@
 import type {
   Account,
   CategoryOption,
-  ImportSummary,
-  MonthlyReport,
+  CategoryTransaction,
+  ImportJobStatus,
+  NewAccountRequest,
+  NewCategoryRequest,
+  PeriodReport,
   ResolveRequest,
   ReviewCard,
 } from "./types";
@@ -18,20 +21,72 @@ export function getAccounts(): Promise<Account[]> {
   return fetch("/api/accounts").then((res) => json(res));
 }
 
+export function createAccount(request: NewAccountRequest): Promise<Account> {
+  return fetch("/api/accounts", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(request),
+  }).then((res) => json(res));
+}
+
 export function getCategories(): Promise<CategoryOption[]> {
   return fetch("/api/categories").then((res) => json(res));
 }
 
-export function importFile(
+export function createCategory(
+  request: NewCategoryRequest,
+): Promise<CategoryOption> {
+  return fetch("/api/categories", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(request),
+  }).then((res) => json(res));
+}
+
+export function startImport(
   accountId: number,
   file: File,
-): Promise<ImportSummary> {
+): Promise<{ jobId: string }> {
   const body = new FormData();
   body.set("file", file);
   return fetch(`/api/import?accountId=${accountId}`, {
     method: "POST",
     body,
   }).then((res) => json(res));
+}
+
+export function getImportStatus(jobId: string): Promise<ImportJobStatus> {
+  return fetch(`/api/import/${jobId}/status`).then((res) => json(res));
+}
+
+export async function cancelImport(jobId: string): Promise<void> {
+  const res = await fetch(`/api/import/${jobId}/cancel`, { method: "POST" });
+  if (!res.ok) {
+    throw new Error(`${res.status} ${res.statusText}: ${await res.text()}`);
+  }
+}
+
+export async function clearTransactions(): Promise<void> {
+  const res = await fetch("/api/import/clear", { method: "POST" });
+  if (!res.ok) {
+    throw new Error(`${res.status} ${res.statusText}: ${await res.text()}`);
+  }
+}
+
+export function getTransactionCount(): Promise<{ total: number }> {
+  return fetch("/api/stats/count").then((res) => json(res));
+}
+
+export function backfillFx(): Promise<{ fixed: number }> {
+  return fetch("/api/import/backfill-fx", { method: "POST" }).then((res) =>
+    json(res),
+  );
+}
+
+export function renormalizeMerchants(): Promise<{ changed: number }> {
+  return fetch("/api/import/renormalize-merchants", { method: "POST" }).then(
+    (res) => json(res),
+  );
 }
 
 export function getOpenReviews(): Promise<ReviewCard[]> {
@@ -52,11 +107,23 @@ export async function resolveReview(
   }
 }
 
-export function getMonthlyStats(
-  month: string,
+export function getStats(
+  from: string,
+  to: string,
   scope: string,
-): Promise<MonthlyReport> {
-  return fetch(`/api/stats/monthly?month=${month}&scope=${scope}`).then((res) =>
-    json(res),
+): Promise<PeriodReport> {
+  return fetch(`/api/stats/range?from=${from}&to=${to}&scope=${scope}`).then(
+    (res) => json(res),
   );
+}
+
+export function getCategoryTransactions(
+  category: string,
+  from: string,
+  to: string,
+  scope: string,
+): Promise<CategoryTransaction[]> {
+  return fetch(
+    `/api/stats/transactions?category=${encodeURIComponent(category)}&from=${from}&to=${to}&scope=${scope}`,
+  ).then((res) => json(res));
 }

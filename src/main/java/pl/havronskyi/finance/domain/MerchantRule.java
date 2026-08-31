@@ -23,9 +23,8 @@ public class MerchantRule {
     @Column(nullable = false)
     private String pattern;
 
-    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 32)
-    private Category category;
+    private String category;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 24)
@@ -60,11 +59,11 @@ public class MerchantRule {
         this.pattern = pattern;
     }
 
-    public Category getCategory() {
+    public String getCategory() {
         return category;
     }
 
-    public void setCategory(Category category) {
+    public void setCategory(String category) {
         this.category = category;
     }
 

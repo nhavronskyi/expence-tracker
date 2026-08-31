@@ -8,11 +8,14 @@ import org.springframework.stereotype.Service;
 import pl.havronskyi.finance.domain.Category;
 import pl.havronskyi.finance.domain.Txn;
 import pl.havronskyi.finance.ingest.FinanceProperties;
+import pl.havronskyi.finance.repo.CategoryRepository;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
+import java.util.Set;
+import java.util.function.BooleanSupplier;
+import java.util.function.IntConsumer;
 import java.util.stream.Collectors;
 
 /**
@@ -27,13 +30,13 @@ public class LlmCategorizer {
 
     private static final String SYSTEM = """
             You classify Polish bank transactions into a fixed set of personal finance categories.
-            
+
             Categories:
             %s
-            
+
             Rules:
             - Answer with JSON only. No prose, no markdown fences.
-            - Format: {"results":[{"id":<int>,"ranked":[{"category":"<ENUM>","confidence":<0..1>,"reason":"<max 12 words>"}]}]}
+            - Format: {"results":[{"id":<int>,"ranked":[{"category":"<CODE>","confidence":<0..1>,"reason":"<max 12 words>"}]}]}
             - Provide up to 3 ranked candidates per transaction, best first.
             - confidence is your honest probability the top choice is correct. Do not inflate it.
             - If the merchant is unrecognisable or the description is a generic transfer title,
@@ -42,44 +45,54 @@ public class LlmCategorizer {
               Auchan, Kaufland). RESTAURANTS covers on-site eating. DELIVERY covers Glovo, Pyszne, Bolt Food.
             - Never output a category outside the list.
             """;
-    private static final Map<String, Category> CATEGORY_BY_NAME =
-            java.util.Arrays.stream(Category.values())
-                    .collect(Collectors.toMap(Enum::name, c -> c));
+
     private final OllamaClient client;
     private final FinanceProperties props;
+    private final CategoryRepository categories;
     private final ObjectMapper mapper = new ObjectMapper();
 
-    public LlmCategorizer(OllamaClient client, FinanceProperties props) {
+    public LlmCategorizer(OllamaClient client, FinanceProperties props, CategoryRepository categories) {
         this.client = client;
         this.props = props;
-    }
-
-    private static Category toCategory(String name) {
-        if (name == null) return null;
-        return CATEGORY_BY_NAME.get(name.trim().toUpperCase());
+        this.categories = categories;
     }
 
     private static String escape(String s) {
         return s == null ? "" : s.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", " ");
     }
 
-    public List<CategorySuggestion> classify(List<Txn> txns) {
+    public List<CategorySuggestion> classify(List<Txn> txns, IntConsumer onProgress, BooleanSupplier cancelled) {
+        List<Category> active = categories.findByActiveTrueOrderByLabelAsc();
+        String catalog = active.stream()
+                .map(c -> "- " + c.getCode() + " (" + c.getLabel() + "): " + c.getDefinition())
+                .collect(Collectors.joining("\n"));
+        Set<String> validCodes = active.stream()
+                .map(c -> c.getCode().toUpperCase())
+                .collect(Collectors.toSet());
+
         List<CategorySuggestion> out = new ArrayList<>();
         int batchSize = Math.max(1, props.llm().batchSize());
+        int processed = 0;
 
         for (int i = 0; i < txns.size(); i += batchSize) {
+            if (cancelled.getAsBoolean()) {
+                log.info("Kategoryzacja anulowana po {} z {}", processed, txns.size());
+                break;
+            }
             List<Txn> chunk = txns.subList(i, Math.min(txns.size(), i + batchSize));
             try {
-                out.addAll(classifyChunk(chunk));
+                out.addAll(classifyChunk(chunk, catalog, validCodes));
             } catch (RuntimeException e) {
                 // No answer != wrong category. These transactions go to the review queue.
                 log.error("Batch {} nieudany, transakcje trafia do review: {}", i, e.getMessage());
             }
+            processed += chunk.size();
+            onProgress.accept(processed);
         }
         return out;
     }
 
-    private List<CategorySuggestion> classifyChunk(List<Txn> chunk) throws RuntimeException {
+    private List<CategorySuggestion> classifyChunk(List<Txn> chunk, String catalog, Set<String> validCodes) {
         String payload = chunk.stream()
                 .map(t -> "{\"id\":%d,\"merchant\":\"%s\",\"description\":\"%s\",\"amount\":%s,\"currency\":\"%s\",\"date\":\"%s\"}"
                         .formatted(t.getId(),
@@ -90,12 +103,12 @@ public class LlmCategorizer {
                                 t.getTxnDate()))
                 .collect(Collectors.joining(",\n"));
 
-        String system = SYSTEM.formatted(Category.promptCatalog());
+        String system = SYSTEM.formatted(catalog);
         String raw = client.complete(system, "Transactions:\n[" + payload + "]");
-        return parse(raw);
+        return parse(raw, validCodes);
     }
 
-    List<CategorySuggestion> parse(String raw) {
+    List<CategorySuggestion> parse(String raw, Set<String> validCodes) {
         String cleaned = raw.trim()
                 .replaceAll("^```(json)?", "")
                 .replaceAll("```$", "")
@@ -107,10 +120,12 @@ public class LlmCategorizer {
                 long id = node.path("id").asLong();
                 List<Suggestion> ranked = new ArrayList<>();
                 for (JsonNode r : node.path("ranked")) {
-                    Category c = toCategory(r.path("category").asText());
-                    if (c == null) continue;
+                    String code = r.path("category").asText(null);
+                    if (code == null) continue;
+                    code = code.trim().toUpperCase();
+                    if (!validCodes.contains(code)) continue;
                     ranked.add(new Suggestion(
-                            c,
+                            code,
                             BigDecimal.valueOf(r.path("confidence").asDouble(0.0))
                                     .setScale(2, java.math.RoundingMode.HALF_UP),
                             r.path("reason").asText("")));

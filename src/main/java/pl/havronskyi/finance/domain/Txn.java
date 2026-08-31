@@ -59,9 +59,8 @@ public class Txn {
     @Column(nullable = false, length = 24)
     private TxnKind kind = TxnKind.UNKNOWN;
 
-    @Enumerated(EnumType.STRING)
     @Column(length = 32)
-    private Category category;
+    private String category;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "category_source", length = 16)
@@ -185,11 +184,11 @@ public class Txn {
         this.kind = kind;
     }
 
-    public Category getCategory() {
+    public String getCategory() {
         return category;
     }
 
-    public void setCategory(Category category) {
+    public void setCategory(String category) {
         this.category = category;
     }
 

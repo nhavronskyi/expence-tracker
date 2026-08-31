@@ -37,6 +37,17 @@ class ParsingTest {
     }
 
     @Test
+    void collapsesOrderIdsToOneMerchantKey() {
+        MerchantNormalizer n = new MerchantNormalizer();
+        String a = n.normalize("AMZN QK8RKWV6PPJD5SIEK LUXEMBOURG", "");
+        String b = n.normalize("AMZN CR5JH4665 LUXEMBOURG LU", "");
+        String c = n.normalize("AMZN 1CGXNLTA3XH2QCMDA LUXEMBOURG", "");
+        assertEquals(a, b, "Rozne numery zamowien tego samego sklepu musza dac ten sam klucz");
+        assertEquals(a, c);
+        assertEquals("AMZN LUXEMBOURG", a);
+    }
+
+    @Test
     void identicalSameDayTransactionsGetDistinctKeys() {
         String first = DedupKey.of(1L, LocalDate.of(2026, 7, 4), -1200, "KAWA", 0);
         String second = DedupKey.of(1L, LocalDate.of(2026, 7, 4), -1200, "KAWA", 1);

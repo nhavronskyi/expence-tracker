@@ -1,21 +1,7 @@
-export type Category =
-  | "APARTMENTS"
-  | "PAYMENTS"
-  | "TRANSPORT"
-  | "CLOTHES"
-  | "ELECTRONICS"
-  | "MEBLES"
-  | "FRIDGE"
-  | "DELIVERY"
-  | "HOBBY"
-  | "PRESENTS"
-  | "RESTAURANTS"
-  | "TRAVELING"
-  | "TOOLS"
-  | "SPORT"
-  | "HEALTH"
-  | "INVESTMENTS"
-  | "TAX";
+// Categories are user-extensible (added from the app), so this is just a string,
+// not a fixed union - the valid set lives in the `category` table, fetched via
+// getCategories().
+export type Category = string;
 
 export type TxnKind = "EXPENSE" | "INCOME" | "INTERNAL_TRANSFER" | "UNKNOWN";
 
@@ -37,6 +23,19 @@ export interface Account {
   currency: string;
 }
 
+export interface NewAccountRequest {
+  iban: string;
+  label: string;
+  scope: AccountScope;
+  type: AccountType;
+  currency: string;
+}
+
+export interface NewCategoryRequest {
+  label: string;
+  definition: string;
+}
+
 export interface Suggestion {
   category: Category;
   confidence: number;
@@ -46,7 +45,12 @@ export interface Suggestion {
 export interface ReviewCard {
   reviewId: number;
   txnId: number;
-  question: string;
+  merchant: string;
+  description: string;
+  amount: number;
+  currency: string;
+  txnDate: string;
+  kind: TxnKind;
   suggestionsJson: string;
 }
 
@@ -67,8 +71,21 @@ export interface ImportSummary {
   queuedForReview: number;
 }
 
-export interface MonthlyReport {
-  month: string;
+export type ImportPhase =
+  "PARSING" | "CATEGORIZING" | "DONE" | "CANCELLED" | "FAILED";
+
+export interface ImportJobStatus {
+  jobId: string;
+  phase: ImportPhase;
+  processed: number;
+  total: number;
+  summary: ImportSummary | null;
+  error: string | null;
+}
+
+export interface PeriodReport {
+  from: string;
+  to: string;
   scope: string;
   totalExpenses: number;
   totalIncome: number;
@@ -77,4 +94,15 @@ export interface MonthlyReport {
   excludedInternalTransfers: number;
   uncategorizedCount: number;
   warnings: string[];
+  nettedCounterparties: string[];
+}
+
+export interface CategoryTransaction {
+  txnId: number;
+  txnDate: string;
+  merchant: string;
+  description: string;
+  amount: number;
+  currency: string;
+  kind: TxnKind;
 }

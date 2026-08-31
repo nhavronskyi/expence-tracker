@@ -1,21 +1,21 @@
 package pl.havronskyi.finance.stats;
 
-import pl.havronskyi.finance.domain.Category;
-
 import java.math.BigDecimal;
-import java.time.YearMonth;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
-public record MonthlyReport(
-        YearMonth month,
+public record PeriodReport(
+        LocalDate from,
+        LocalDate to,
         String scope,
         BigDecimal totalExpenses,
         BigDecimal totalIncome,
         BigDecimal net,
-        Map<Category, BigDecimal> byCategory,
+        Map<String, BigDecimal> byCategory,
         BigDecimal excludedInternalTransfers,
         int uncategorizedCount,
-        List<String> warnings
+        List<String> warnings,
+        List<String> nettedCounterparties
 ) {
 }

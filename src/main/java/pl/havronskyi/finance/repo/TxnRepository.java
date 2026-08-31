@@ -18,6 +18,8 @@ public interface TxnRepository extends JpaRepository<Txn, Long> {
 
     List<Txn> findByTxnDateBetween(LocalDate from, LocalDate to);
 
+    List<Txn> findByAmountPlnMinorIsNullAndCurrencyNot(String currency);
+
     /**
      * Candidates for pairing the other leg of an internal transfer.
      */
@@ -34,4 +36,6 @@ public interface TxnRepository extends JpaRepository<Txn, Long> {
                                      @Param("to") LocalDate to);
 
     List<Txn> findByKindAndTxnDateBetween(TxnKind kind, LocalDate from, LocalDate to);
+
+    List<Txn> findByCategoryAndTxnDateBetween(String category, LocalDate from, LocalDate to);
 }

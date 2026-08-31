@@ -1,55 +1,65 @@
 package pl.havronskyi.finance.domain;
 
-import java.util.Arrays;
-import java.util.stream.Collectors;
+import jakarta.persistence.*;
 
 /**
- * The definitions are part of the contract with the model - they go verbatim into the prompt.
- * Without them the model mixes up Fridge/Restaurants/Delivery and Payments/Apartments,
+ * The definition is part of the contract with the model - it goes verbatim into the prompt.
+ * Without it the model mixes up Fridge/Restaurants/Delivery and Payments/Apartments,
  * because the category names alone are ambiguous.
  */
-public enum Category {
+@Entity
+@Table(name = "category")
+public class Category {
 
-    APARTMENTS("Apartments", "Rent, housing fees, utilities, building maintenance, mortgage payments."),
-    PAYMENTS("Payments", "Recurring non-housing bills: mobile, internet, insurance, software subscriptions, bank fees."),
-    TRANSPORT("Transport", "Public transit, taxi, ride-hailing, fuel, parking, tolls, car service."),
-    CLOTHES("Clothes", "Clothing, footwear, accessories."),
-    ELECTRONICS("Electronics", "Computers, phones, peripherals, components, consumer electronics."),
-    MEBLES("Mebles", "Furniture and home furnishing (IKEA-type purchases)."),
-    FRIDGE("Fridge", "Groceries bought to take home: supermarkets, food shops, markets. NOT eating out."),
-    DELIVERY("Delivery", "Food ordered for delivery (Glovo, Pyszne, Uber Eats) and parcel courier fees."),
-    HOBBY("Hobby", "Games, books, music, streaming for entertainment, crafts, collections."),
-    PRESENTS("Presents", "Gifts bought for other people, flowers, celebrations."),
-    RESTAURANTS("Restaurants", "Eating or drinking on site: restaurants, cafes, bars, canteens. NOT delivery."),
-    TRAVELING("Traveling", "Flights, trains between cities, hotels, travel insurance, luggage."),
-    TOOLS("Tools", "Hardware, DIY, workshop tools, building materials."),
-    SPORT("Sport", "Gym, sports club, sports gear, sports classes."),
-    HEALTH("Health", "Doctors, dentists, pharmacy, medical tests, therapy."),
-    INVESTMENTS("Investments", "Brokerage funding, securities, retirement products, crypto purchases."),
-    TAX("Tax", "Taxes and public dues: ZUS, US, VAT, PIT. Mostly on the business account.");
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-    private final String label;
-    private final String definition;
+    @Column(nullable = false, unique = true, length = 32)
+    private String code;
 
-    Category(String label, String definition) {
-        this.label = label;
-        this.definition = definition;
+    @Column(nullable = false, length = 120)
+    private String label;
+
+    @Column(nullable = false, columnDefinition = "text")
+    private String definition = "";
+
+    @Column(nullable = false)
+    private boolean active = true;
+
+    public Long getId() {
+        return id;
     }
 
-    /**
-     * Block inserted into the prompt.
-     */
-    public static String promptCatalog() {
-        return Arrays.stream(values())
-                .map(c -> "- " + c.name() + " (" + c.label + "): " + c.definition)
-                .collect(Collectors.joining("\n"));
+    public String getCode() {
+        return code;
     }
 
-    public String label() {
+    public void setCode(String code) {
+        this.code = code;
+    }
+
+    public String getLabel() {
         return label;
     }
 
-    public String definition() {
+    public void setLabel(String label) {
+        this.label = label;
+    }
+
+    public String getDefinition() {
         return definition;
+    }
+
+    public void setDefinition(String definition) {
+        this.definition = definition;
+    }
+
+    public boolean isActive() {
+        return active;
+    }
+
+    public void setActive(boolean active) {
+        this.active = active;
     }
 }

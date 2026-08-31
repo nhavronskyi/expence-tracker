@@ -22,7 +22,12 @@ public class MerchantNormalizer {
             Pattern.compile("(?i)\\bdata transakcji\\b.*"),
             Pattern.compile("(?i)\\b(pol|pl|warszawa|krakow|gdansk|wroclaw|poznan|lodz)\\b"),
             Pattern.compile("\\*+"),
-            Pattern.compile("\\b\\d{3,}\\b")          // store numbers, terminal IDs, references
+            Pattern.compile("\\b\\d{3,}\\b"),          // store numbers, terminal IDs, references
+            // Order/reference codes like AMZN's per-order ids (QK8RKWV6PPJD5SIEK, CR5JH4665) -
+            // long tokens mixing letters and digits are never a stable part of a merchant name.
+            Pattern.compile("\\b(?=[A-Z0-9]*\\d)(?=[A-Z0-9]*[A-Z])[A-Z0-9]{8,}\\b"),
+            // Trailing 2-letter country code some exports append (e.g. "LUXEMBOURG LU").
+            Pattern.compile("\\s+[A-Z]{2}$")
     );
 
     private static final Pattern MULTISPACE = Pattern.compile("\\s{2,}");

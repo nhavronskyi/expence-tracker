@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { getTransactionCount } from "./api";
 import { ImportPage } from "./pages/ImportPage";
 import { ReviewPage } from "./pages/ReviewPage";
 import { StatsPage } from "./pages/StatsPage";
@@ -13,6 +14,14 @@ const TABS: { id: Tab; label: string }[] = [
 
 export default function App() {
   const [tab, setTab] = useState<Tab>("import");
+  const [txnCount, setTxnCount] = useState<number | null>(null);
+  const [refreshCount, setRefreshCount] = useState(0);
+
+  useEffect(() => {
+    getTransactionCount()
+      .then(({ total }) => setTxnCount(total))
+      .catch(() => setTxnCount(null));
+  }, [tab, refreshCount]);
 
   return (
     <div className="app">
@@ -29,9 +38,14 @@ export default function App() {
             </button>
           ))}
         </nav>
+        {txnCount !== null && (
+          <span className="txn-count">{txnCount} transactions</span>
+        )}
       </header>
       <main>
-        {tab === "import" && <ImportPage />}
+        {tab === "import" && (
+          <ImportPage onDataChanged={() => setRefreshCount((n) => n + 1)} />
+        )}
         {tab === "review" && <ReviewPage />}
         {tab === "stats" && <StatsPage />}
       </main>

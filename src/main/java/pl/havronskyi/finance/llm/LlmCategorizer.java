@@ -74,7 +74,9 @@ public class LlmCategorizer {
                 .collect(Collectors.toSet());
 
         List<CategorySuggestion> out = new ArrayList<>();
-        int batchSize = Math.max(1, props.llm().batchSize());
+        // 10% batches: amortizes the fixed system-prompt cost across a chunk of transactions
+        // while still surfacing progress multiple times per import instead of one big jump.
+        int batchSize = Math.max(1, txns.size() / 10);
         int processed = 0;
 
         for (int i = 0; i < txns.size(); i += batchSize) {

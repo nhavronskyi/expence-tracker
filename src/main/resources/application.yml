@@ -28,7 +28,6 @@ finance:
   llm-confidence-threshold: 0.80
   llm:
     api-key: ${OLLAMA_API_KEY:}
-    batch-size: 1
   pekao:
     # Column names from Pekao's "Lista operacji" CSV export.
     charset: UTF-8

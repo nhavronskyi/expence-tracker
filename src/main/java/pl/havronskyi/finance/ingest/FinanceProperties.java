@@ -13,7 +13,7 @@ public record FinanceProperties(
         Llm llm,
         Pekao pekao
 ) {
-    public record Llm(String apiKey, int batchSize) {
+    public record Llm(String apiKey) {
     }
 
     /**

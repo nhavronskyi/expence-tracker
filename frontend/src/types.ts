@@ -86,7 +86,6 @@ export interface ImportJobStatus {
 export interface PeriodReport {
   from: string;
   to: string;
-  scope: string;
   totalExpenses: number;
   totalIncome: number;
   net: number;

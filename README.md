@@ -42,7 +42,7 @@ services:
     volumes:
       - finance-db-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U finance -d finance"]
+      test: [ "CMD-SHELL", "pg_isready -U finance -d finance" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -62,7 +62,7 @@ services:
       DB_PASSWORD: ${FINANCE_DB_PASSWORD:?set in .env}
       OLLAMA_API_KEY: ${OLLAMA_API_KEY:?set in .env}
     ports:
-      - "127.0.0.1:8099:8080" # loopback only; external exposure through NPM
+      - "8099:8080"
     labels:
       com.centurylinklabs.watchtower.enable: "false"
 

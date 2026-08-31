@@ -107,13 +107,9 @@ export async function resolveReview(
   }
 }
 
-export function getStats(
-  from: string,
-  to: string,
-  scope: string,
-): Promise<PeriodReport> {
-  return fetch(`/api/stats/range?from=${from}&to=${to}&scope=${scope}`).then(
-    (res) => json(res),
+export function getStats(from: string, to: string): Promise<PeriodReport> {
+  return fetch(`/api/stats/range?from=${from}&to=${to}`).then((res) =>
+    json(res),
   );
 }
 
@@ -121,9 +117,8 @@ export function getCategoryTransactions(
   category: string,
   from: string,
   to: string,
-  scope: string,
 ): Promise<CategoryTransaction[]> {
   return fetch(
-    `/api/stats/transactions?category=${encodeURIComponent(category)}&from=${from}&to=${to}&scope=${scope}`,
+    `/api/stats/transactions?category=${encodeURIComponent(category)}&from=${from}&to=${to}`,
   ).then((res) => json(res));
 }

@@ -8,7 +8,6 @@ import java.util.Map;
 public record PeriodReport(
         LocalDate from,
         LocalDate to,
-        String scope,
         BigDecimal totalExpenses,
         BigDecimal totalIncome,
         BigDecimal net,

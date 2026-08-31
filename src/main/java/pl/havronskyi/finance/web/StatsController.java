@@ -5,7 +5,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import pl.havronskyi.finance.domain.AccountScope;
 import pl.havronskyi.finance.stats.CategoryTransaction;
 import pl.havronskyi.finance.stats.PeriodReport;
 import pl.havronskyi.finance.stats.StatsService;
@@ -25,18 +24,17 @@ public class StatsController {
     }
 
     /**
-     * GET /api/stats/range?from=2026-07-01&to=2026-07-31&scope=PERSONAL
+     * GET /api/stats/range?from=2026-07-01&to=2026-07-31
      */
     @GetMapping("/range")
     public ResponseEntity<PeriodReport> range(@RequestParam String from,
-                                              @RequestParam String to,
-                                              @RequestParam(defaultValue = "PERSONAL") AccountScope scope) {
+                                              @RequestParam String to) {
         LocalDate fromDate = LocalDate.parse(from);
         LocalDate toDate = LocalDate.parse(to);
         if (fromDate.isAfter(toDate)) {
             return ResponseEntity.badRequest().build();
         }
-        return ResponseEntity.ok(statsService.forRange(fromDate, toDate, scope));
+        return ResponseEntity.ok(statsService.forRange(fromDate, toDate));
     }
 
     @GetMapping("/count")
@@ -45,19 +43,18 @@ public class StatsController {
     }
 
     /**
-     * GET /api/stats/transactions?category=VITA&from=2026-08-01&to=2026-08-31&scope=PERSONAL
+     * GET /api/stats/transactions?category=VITA&from=2026-08-01&to=2026-08-31
      */
     @GetMapping("/transactions")
     public ResponseEntity<List<CategoryTransaction>> transactionsForCategory(
             @RequestParam String category,
             @RequestParam String from,
-            @RequestParam String to,
-            @RequestParam(defaultValue = "PERSONAL") AccountScope scope) {
+            @RequestParam String to) {
         LocalDate fromDate = LocalDate.parse(from);
         LocalDate toDate = LocalDate.parse(to);
         if (fromDate.isAfter(toDate)) {
             return ResponseEntity.badRequest().build();
         }
-        return ResponseEntity.ok(statsService.transactionsForCategory(category, fromDate, toDate, scope));
+        return ResponseEntity.ok(statsService.transactionsForCategory(category, fromDate, toDate));
     }
 }

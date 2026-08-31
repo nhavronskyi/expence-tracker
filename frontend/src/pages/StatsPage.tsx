@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { getCategoryTransactions, getStats } from "../api";
-import type { AccountScope, CategoryTransaction, PeriodReport } from "../types";
+import type { CategoryTransaction, PeriodReport } from "../types";
 
 type Mode = "month" | "range";
 
@@ -29,7 +29,6 @@ export function StatsPage() {
   const [month, setMonth] = useState(currentMonth());
   const [from, setFrom] = useState(today());
   const [to, setTo] = useState(today());
-  const [scope, setScope] = useState<AccountScope>("PERSONAL");
   const [report, setReport] = useState<PeriodReport | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -41,7 +40,6 @@ export function StatsPage() {
   const [loadedRange, setLoadedRange] = useState<{
     from: string;
     to: string;
-    scope: AccountScope;
   } | null>(null);
 
   async function load() {
@@ -54,8 +52,8 @@ export function StatsPage() {
     setError(null);
     setSelectedCategory(null);
     try {
-      setReport(await getStats(range.from, range.to, scope));
-      setLoadedRange({ ...range, scope });
+      setReport(await getStats(range.from, range.to));
+      setLoadedRange(range);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -78,7 +76,6 @@ export function StatsPage() {
           category,
           loadedRange.from,
           loadedRange.to,
-          loadedRange.scope,
         ),
       );
     } catch (e) {
@@ -134,13 +131,6 @@ export function StatsPage() {
             />
           </>
         )}
-        <select
-          value={scope}
-          onChange={(e) => setScope(e.target.value as AccountScope)}
-        >
-          <option value="PERSONAL">Personal</option>
-          <option value="BUSINESS">Business</option>
-        </select>
         <button disabled={busy} onClick={load}>
           {busy ? "Loading..." : "Load"}
         </button>

@@ -2,7 +2,6 @@ package pl.havronskyi.finance.stats;
 
 import org.springframework.stereotype.Service;
 import pl.havronskyi.finance.domain.*;
-import pl.havronskyi.finance.repo.AccountRepository;
 import pl.havronskyi.finance.repo.TxnRepository;
 
 import java.math.BigDecimal;
@@ -19,11 +18,9 @@ import java.util.stream.Collectors;
 public class StatsService {
 
     private final TxnRepository txns;
-    private final AccountRepository accounts;
 
-    public StatsService(TxnRepository txns, AccountRepository accounts) {
+    public StatsService(TxnRepository txns) {
         this.txns = txns;
-        this.accounts = accounts;
     }
 
     private static BigDecimal money(long minor) {
@@ -34,16 +31,8 @@ public class StatsService {
         return txns.count();
     }
 
-    public List<CategoryTransaction> transactionsForCategory(String category, LocalDate from, LocalDate to,
-                                                              AccountScope scope) {
-        Map<Long, Account> accountById = accounts.findAll().stream()
-                .collect(Collectors.toMap(Account::getId, a -> a));
-
+    public List<CategoryTransaction> transactionsForCategory(String category, LocalDate from, LocalDate to) {
         return txns.findByCategoryAndTxnDateBetween(category, from, to).stream()
-                .filter(t -> {
-                    Account a = accountById.get(t.getAccountId());
-                    return a != null && a.getScope() == scope;
-                })
                 .sorted(Comparator.comparing(Txn::getTxnDate).reversed()
                         .thenComparing(Comparator.comparing(Txn::getId).reversed()))
                 .map(t -> new CategoryTransaction(
@@ -72,16 +61,8 @@ public class StatsService {
      * credit card billing cycle - otherwise "October expenses" would mean the
      * period from the 12th to the 11th, and nobody trusts the numbers.
      */
-    public PeriodReport forRange(LocalDate from, LocalDate to, AccountScope scope) {
-        Map<Long, Account> accountById = accounts.findAll().stream()
-                .collect(Collectors.toMap(Account::getId, a -> a));
-
-        List<Txn> all = txns.findByTxnDateBetween(from, to).stream()
-                .filter(t -> {
-                    Account a = accountById.get(t.getAccountId());
-                    return a != null && a.getScope() == scope;
-                })
-                .toList();
+    public PeriodReport forRange(LocalDate from, LocalDate to) {
+        List<Txn> all = txns.findByTxnDateBetween(from, to);
 
         long transfers = 0;
         Map<String, Long> byCategory = new TreeMap<>();
@@ -217,7 +198,6 @@ public class StatsService {
         return new PeriodReport(
                 from,
                 to,
-                scope.name(),
                 money(expenses),
                 money(income),
                 money(income - expenses),

@@ -16,6 +16,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.BooleanSupplier;
 import java.util.function.IntConsumer;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -109,33 +111,113 @@ public class LlmCategorizer {
         return parse(raw, validCodes);
     }
 
+    private static final Pattern ENTRY_START =
+            Pattern.compile("\\{\\s*\"id\"\\s*:\\s*\\d+\\s*,\\s*\"ranked\"\\s*:\\s*\\[");
+    private static final Pattern ENTRY_ID = Pattern.compile("\"id\"\\s*:\\s*(\\d+)");
+
     List<CategorySuggestion> parse(String raw, Set<String> validCodes) {
         String cleaned = raw.trim()
                 .replaceAll("^```(json)?", "")
                 .replaceAll("```$", "")
                 .trim();
         try {
-            JsonNode root = mapper.readTree(cleaned);
             List<CategorySuggestion> result = new ArrayList<>();
-            for (JsonNode node : root.path("results")) {
-                long id = node.path("id").asLong();
-                List<Suggestion> ranked = new ArrayList<>();
-                for (JsonNode r : node.path("ranked")) {
-                    String code = r.path("category").asText(null);
-                    if (code == null) continue;
-                    code = code.trim().toUpperCase();
-                    if (!validCodes.contains(code)) continue;
-                    ranked.add(new Suggestion(
-                            code,
-                            BigDecimal.valueOf(r.path("confidence").asDouble(0.0))
-                                    .setScale(2, java.math.RoundingMode.HALF_UP),
-                            r.path("reason").asText("")));
-                }
-                result.add(new CategorySuggestion(id, ranked));
+            for (JsonNode node : mapper.readTree(cleaned).path("results")) {
+                result.add(toSuggestion(node, validCodes));
             }
             return result;
         } catch (Exception e) {
-            throw new IllegalStateException("Nieparsowalna odpowiedz modelu: " + cleaned, e);
+            List<CategorySuggestion> salvaged = salvageEntries(cleaned, validCodes);
+            if (salvaged.isEmpty()) {
+                throw new IllegalStateException("Nieparsowalna odpowiedz modelu: " + cleaned, e);
+            }
+            log.warn("Czesciowo uszkodzona odpowiedz modelu, odzyskano {} wpisow: {}",
+                    salvaged.size(), e.getMessage());
+            return salvaged;
         }
+    }
+
+    private CategorySuggestion toSuggestion(JsonNode node, Set<String> validCodes) {
+        long id = node.path("id").asLong();
+        List<Suggestion> ranked = new ArrayList<>();
+        for (JsonNode r : node.path("ranked")) {
+            String code = r.path("category").asText(null);
+            if (code == null) continue;
+            code = code.trim().toUpperCase();
+            if (!validCodes.contains(code)) continue;
+            ranked.add(new Suggestion(
+                    code,
+                    BigDecimal.valueOf(r.path("confidence").asDouble(0.0))
+                            .setScale(2, java.math.RoundingMode.HALF_UP),
+                    r.path("reason").asText("")));
+        }
+        return new CategorySuggestion(id, ranked);
+    }
+
+    /**
+     * The model occasionally emits one malformed entry inside an otherwise valid response
+     * (a stray token breaking that entry's "ranked" array). Parsing the whole response as one
+     * JSON tree used to discard every transaction's answer when this happened; this recovers
+     * every entry that is independently well-formed instead of throwing all of them away.
+     */
+    private List<CategorySuggestion> salvageEntries(String cleaned, Set<String> validCodes) {
+        List<Integer> anchors = new ArrayList<>();
+        Matcher starts = ENTRY_START.matcher(cleaned);
+        while (starts.find()) {
+            anchors.add(starts.start());
+        }
+
+        List<CategorySuggestion> result = new ArrayList<>();
+        for (int i = 0; i < anchors.size(); i++) {
+            int open = anchors.get(i);
+            int cap = (i + 1 < anchors.size()) ? anchors.get(i + 1) : cleaned.length();
+            int end = findMatchingEnd(cleaned, open, cap);
+            if (end < 0) continue;
+            String chunk = cleaned.substring(open, end + 1);
+            try {
+                result.add(toSuggestion(mapper.readTree(chunk), validCodes));
+            } catch (Exception ex) {
+                Matcher idMatch = ENTRY_ID.matcher(chunk);
+                log.warn("Pomijam nieparsowalny wpis kategoryzacji (id={}): {}",
+                        idMatch.find() ? idMatch.group(1) : "?", ex.getMessage());
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Index of the '}' that closes the JSON object starting at {@code open}, treating string
+     * contents (including escaped quotes) as opaque so stray brackets inside a corrupted string
+     * don't affect bracket depth. Bounded by {@code cap} so one malformed entry can never bleed
+     * into the next entry's span.
+     */
+    private static int findMatchingEnd(String s, int open, int cap) {
+        int depth = 0;
+        boolean inString = false;
+        boolean escape = false;
+        for (int i = open; i < cap; i++) {
+            char c = s.charAt(i);
+            if (inString) {
+                if (escape) {
+                    escape = false;
+                } else if (c == '\\') {
+                    escape = true;
+                } else if (c == '"') {
+                    inString = false;
+                }
+                continue;
+            }
+            if (c == '"') {
+                inString = true;
+            } else if (c == '{' || c == '[') {
+                depth++;
+            } else if (c == '}' || c == ']') {
+                depth--;
+                if (depth == 0) {
+                    return i;
+                }
+            }
+        }
+        return -1;
     }
 }

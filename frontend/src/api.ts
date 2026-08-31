@@ -4,10 +4,12 @@ import type {
   CategoryTransaction,
   ImportJobStatus,
   NewAccountRequest,
+  NewAccountResponse,
   NewCategoryRequest,
   PeriodReport,
   ResolveRequest,
   ReviewCard,
+  UpdateAccountRequest,
 } from "./types";
 
 async function json<T>(res: Response): Promise<T> {
@@ -17,13 +19,28 @@ async function json<T>(res: Response): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-export function getAccounts(): Promise<Account[]> {
-  return fetch("/api/accounts").then((res) => json(res));
+export function getAccounts(includeInactive = false): Promise<Account[]> {
+  return fetch(
+    `/api/accounts${includeInactive ? "?includeInactive=true" : ""}`,
+  ).then((res) => json(res));
 }
 
-export function createAccount(request: NewAccountRequest): Promise<Account> {
+export function createAccount(
+  request: NewAccountRequest,
+): Promise<NewAccountResponse> {
   return fetch("/api/accounts", {
     method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(request),
+  }).then((res) => json(res));
+}
+
+export function updateAccount(
+  id: number,
+  request: UpdateAccountRequest,
+): Promise<NewAccountResponse> {
+  return fetch(`/api/accounts/${id}`, {
+    method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(request),
   }).then((res) => json(res));
@@ -89,6 +106,12 @@ export function renormalizeMerchants(): Promise<{ changed: number }> {
   );
 }
 
+export function reclassifyTransfers(): Promise<{ reclassified: number }> {
+  return fetch("/api/import/reclassify-transfers", { method: "POST" }).then(
+    (res) => json(res),
+  );
+}
+
 export function getOpenReviews(): Promise<ReviewCard[]> {
   return fetch("/api/review").then((res) => json(res));
 }
@@ -121,4 +144,27 @@ export function getCategoryTransactions(
   return fetch(
     `/api/stats/transactions?category=${encodeURIComponent(category)}&from=${from}&to=${to}`,
   ).then((res) => json(res));
+}
+
+export function getTransfers(
+  from: string,
+  to: string,
+): Promise<CategoryTransaction[]> {
+  return fetch(`/api/stats/transfers?from=${from}&to=${to}`).then((res) =>
+    json(res),
+  );
+}
+
+export async function recategorizeTransaction(
+  txnId: number,
+  request: ResolveRequest,
+): Promise<void> {
+  const res = await fetch(`/api/transactions/${txnId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(request),
+  });
+  if (!res.ok) {
+    throw new Error(`${res.status} ${res.statusText}: ${await res.text()}`);
+  }
 }

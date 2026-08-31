@@ -3,18 +3,13 @@ import {
   backfillFx,
   cancelImport,
   clearTransactions,
-  createAccount,
   getAccounts,
   getImportStatus,
+  reclassifyTransfers,
   renormalizeMerchants,
   startImport,
 } from "../api";
-import type {
-  Account,
-  AccountScope,
-  AccountType,
-  ImportJobStatus,
-} from "../types";
+import type { Account, ImportJobStatus } from "../types";
 
 const PHASE_LABELS: Record<string, string> = {
   PARSING: "Parsing...",
@@ -23,94 +18,18 @@ const PHASE_LABELS: Record<string, string> = {
   FAILED: "Failed",
 };
 
-function NewAccountForm({
-  onCreated,
-}: {
-  onCreated: (account: Account) => void;
-}) {
-  const [label, setLabel] = useState("");
-  const [iban, setIban] = useState("");
-  const [scope, setScope] = useState<AccountScope>("PERSONAL");
-  const [type, setType] = useState<AccountType>("CURRENT");
-  const [currency, setCurrency] = useState("PLN");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function submit() {
-    if (!label.trim()) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const account = await createAccount({
-        label: label.trim(),
-        iban: iban.trim(),
-        scope,
-        type,
-        currency,
-      });
-      setLabel("");
-      setIban("");
-      onCreated(account);
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <div className="new-account">
-      <div className="row">
-        <input
-          placeholder="Label (e.g. Checking)"
-          value={label}
-          onChange={(e) => setLabel(e.target.value)}
-        />
-        <input
-          placeholder="IBAN (optional)"
-          value={iban}
-          onChange={(e) => setIban(e.target.value)}
-        />
-        <select
-          value={scope}
-          onChange={(e) => setScope(e.target.value as AccountScope)}
-        >
-          <option value="PERSONAL">Personal</option>
-          <option value="BUSINESS">Business</option>
-        </select>
-        <select
-          value={type}
-          onChange={(e) => setType(e.target.value as AccountType)}
-        >
-          <option value="CURRENT">Current</option>
-          <option value="CREDIT_CARD">Credit card</option>
-        </select>
-        <input
-          className="currency"
-          placeholder="PLN"
-          value={currency}
-          onChange={(e) => setCurrency(e.target.value)}
-        />
-        <button disabled={busy || !label.trim()} onClick={submit}>
-          {busy ? "Adding..." : "Add account"}
-        </button>
-      </div>
-      {error && <p className="error">{error}</p>}
-    </div>
-  );
-}
-
 export function ImportPage({ onDataChanged }: { onDataChanged: () => void }) {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [accountId, setAccountId] = useState<number | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [job, setJob] = useState<ImportJobStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [showNewAccount, setShowNewAccount] = useState(false);
   const [fxBusy, setFxBusy] = useState(false);
   const [fxResult, setFxResult] = useState<string | null>(null);
   const [normBusy, setNormBusy] = useState(false);
   const [normResult, setNormResult] = useState<string | null>(null);
+  const [transferBusy, setTransferBusy] = useState(false);
+  const [transferResult, setTransferResult] = useState<string | null>(null);
   const [clearBusy, setClearBusy] = useState(false);
   const pollRef = useRef<number | null>(null);
 
@@ -130,14 +49,6 @@ export function ImportPage({ onDataChanged }: { onDataChanged: () => void }) {
       if (pollRef.current != null) window.clearInterval(pollRef.current);
     };
   }, []);
-
-  function handleCreated(account: Account) {
-    setShowNewAccount(false);
-    setAccounts((prev) =>
-      [...prev, account].sort((a, b) => a.label.localeCompare(b.label)),
-    );
-    setAccountId(account.id);
-  }
 
   function poll(jobId: string) {
     pollRef.current = window.setInterval(async () => {
@@ -221,6 +132,22 @@ export function ImportPage({ onDataChanged }: { onDataChanged: () => void }) {
     }
   }
 
+  async function runReclassifyTransfers() {
+    setTransferBusy(true);
+    setTransferResult(null);
+    setError(null);
+    try {
+      const { reclassified } = await reclassifyTransfers();
+      setTransferResult(
+        `Reclassified ${reclassified} transaction${reclassified === 1 ? "" : "s"} as internal transfers.`,
+      );
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setTransferBusy(false);
+    }
+  }
+
   async function runClear() {
     if (
       !window.confirm(
@@ -250,8 +177,8 @@ export function ImportPage({ onDataChanged }: { onDataChanged: () => void }) {
     <section>
       <h2>Import statement</h2>
 
-      {accounts.length === 0 && !showNewAccount && (
-        <p>No accounts yet — add one to import a statement.</p>
+      {accounts.length === 0 && (
+        <p>No accounts yet — add one on the Accounts tab.</p>
       )}
 
       <div className="row">
@@ -277,12 +204,7 @@ export function ImportPage({ onDataChanged }: { onDataChanged: () => void }) {
         >
           {running ? "Importing..." : "Import"}
         </button>
-        <button className="link" onClick={() => setShowNewAccount((v) => !v)}>
-          {showNewAccount ? "Cancel" : "+ Add account"}
-        </button>
       </div>
-
-      {showNewAccount && <NewAccountForm onCreated={handleCreated} />}
 
       {error && <p className="error">{error}</p>}
 
@@ -360,12 +282,20 @@ export function ImportPage({ onDataChanged }: { onDataChanged: () => void }) {
         <button className="link" disabled={normBusy} onClick={runRenormalize}>
           {normBusy ? "Updating..." : "Re-normalize merchants"}
         </button>
+        <button
+          className="link"
+          disabled={transferBusy}
+          onClick={runReclassifyTransfers}
+        >
+          {transferBusy ? "Reclassifying..." : "Reclassify internal transfers"}
+        </button>
         <button className="link danger" disabled={clearBusy} onClick={runClear}>
           {clearBusy ? "Clearing..." : "Clear all transactions"}
         </button>
       </div>
       {fxResult && <p>{fxResult}</p>}
       {normResult && <p>{normResult}</p>}
+      {transferResult && <p>{transferResult}</p>}
     </section>
   );
 }

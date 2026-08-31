@@ -1,8 +1,29 @@
-import { useState } from "react";
-import { getCategoryTransactions, getStats } from "../api";
-import type { CategoryTransaction, PeriodReport } from "../types";
+import { useEffect, useState } from "react";
+import {
+  getCategories,
+  getCategoryTransactions,
+  getStats,
+  getTransfers,
+  recategorizeTransaction,
+} from "../api";
+import type {
+  CategoryOption,
+  CategoryTransaction,
+  PeriodReport,
+  TxnKind,
+} from "../types";
 
 type Mode = "month" | "range";
+
+const TRANSFERS = "__transfers__";
+
+const KINDS: TxnKind[] = ["EXPENSE", "INCOME", "INTERNAL_TRANSFER", "UNKNOWN"];
+const KIND_LABELS: Record<TxnKind, string> = {
+  EXPENSE: "Expense",
+  INCOME: "Income",
+  INTERNAL_TRANSFER: "Internal transfer",
+  UNKNOWN: "Unknown",
+};
 
 function currentMonth(): string {
   const now = new Date();
@@ -24,6 +45,114 @@ function monthToRange(month: string): { from: string; to: string } {
   };
 }
 
+function fetchBucket(
+  category: string,
+  range: { from: string; to: string },
+): Promise<CategoryTransaction[]> {
+  return category === TRANSFERS
+    ? getTransfers(range.from, range.to)
+    : getCategoryTransactions(category, range.from, range.to);
+}
+
+function TxnRow({
+  t,
+  categories,
+  defaultCategory,
+  onSaved,
+}: {
+  t: CategoryTransaction;
+  categories: CategoryOption[];
+  defaultCategory: string;
+  onSaved: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [category, setCategory] = useState(defaultCategory);
+  const [kind, setKind] = useState<TxnKind>(t.kind);
+  const [learnRule, setLearnRule] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function save() {
+    if (!category) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await recategorizeTransaction(t.txnId, { category, kind, learnRule });
+      setEditing(false);
+      onSaved();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <tr>
+      <td>{t.txnDate}</td>
+      <td>{t.merchant}</td>
+      <td className={t.amount > 0 ? "income" : ""}>
+        {t.amount > 0 ? "+" : ""}
+        {t.amount.toFixed(2)} {t.currency}
+      </td>
+      <td>
+        {editing ? (
+          <>
+            <div className="row">
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+              >
+                <option value="" disabled>
+                  Choose category
+                </option>
+                {categories.map((c) => (
+                  <option key={c.name} value={c.name}>
+                    {c.label}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={kind}
+                onChange={(e) => setKind(e.target.value as TxnKind)}
+              >
+                {KINDS.map((k) => (
+                  <option key={k} value={k}>
+                    {KIND_LABELS[k]}
+                  </option>
+                ))}
+              </select>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={learnRule}
+                  onChange={(e) => setLearnRule(e.target.checked)}
+                />
+                remember this merchant
+              </label>
+              <button disabled={busy || !category} onClick={save}>
+                {busy ? "Saving..." : "Save"}
+              </button>
+              <button
+                className="link"
+                disabled={busy}
+                onClick={() => setEditing(false)}
+              >
+                Cancel
+              </button>
+            </div>
+            {error && <p className="error">{error}</p>}
+          </>
+        ) : (
+          <button className="link" onClick={() => setEditing(true)}>
+            Move
+          </button>
+        )}
+      </td>
+    </tr>
+  );
+}
+
 export function StatsPage() {
   const [mode, setMode] = useState<Mode>("month");
   const [month, setMonth] = useState(currentMonth());
@@ -32,6 +161,7 @@ export function StatsPage() {
   const [report, setReport] = useState<PeriodReport | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [categories, setCategories] = useState<CategoryOption[]>([]);
 
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [categoryTxns, setCategoryTxns] = useState<CategoryTransaction[]>([]);
@@ -42,7 +172,13 @@ export function StatsPage() {
     to: string;
   } | null>(null);
 
-  async function load() {
+  useEffect(() => {
+    getCategories()
+      .then(setCategories)
+      .catch(() => setCategories([]));
+  }, []);
+
+  async function load(keepSelection = false) {
     const range = mode === "month" ? monthToRange(month) : { from, to };
     if (range.from > range.to) {
       setError("The start date must be before the end date.");
@@ -50,10 +186,21 @@ export function StatsPage() {
     }
     setBusy(true);
     setError(null);
-    setSelectedCategory(null);
+    if (!keepSelection) setSelectedCategory(null);
     try {
       setReport(await getStats(range.from, range.to));
       setLoadedRange(range);
+      if (keepSelection && selectedCategory) {
+        setTxnsBusy(true);
+        setTxnsError(null);
+        try {
+          setCategoryTxns(await fetchBucket(selectedCategory, range));
+        } catch (e) {
+          setTxnsError((e as Error).message);
+        } finally {
+          setTxnsBusy(false);
+        }
+      }
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -71,13 +218,7 @@ export function StatsPage() {
     setTxnsBusy(true);
     setTxnsError(null);
     try {
-      setCategoryTxns(
-        await getCategoryTransactions(
-          category,
-          loadedRange.from,
-          loadedRange.to,
-        ),
-      );
+      setCategoryTxns(await fetchBucket(category, loadedRange));
     } catch (e) {
       setTxnsError((e as Error).message);
     } finally {
@@ -131,7 +272,7 @@ export function StatsPage() {
             />
           </>
         )}
-        <button disabled={busy} onClick={load}>
+        <button disabled={busy} onClick={() => load()}>
           {busy ? "Loading..." : "Load"}
         </button>
       </div>
@@ -154,7 +295,10 @@ export function StatsPage() {
                 <td>Net</td>
                 <td>{report.net.toFixed(2)}</td>
               </tr>
-              <tr>
+              <tr
+                className="clickable-row"
+                onClick={() => selectCategory(TRANSFERS)}
+              >
                 <td>Excluded internal transfers</td>
                 <td>{report.excludedInternalTransfers.toFixed(2)}</td>
               </tr>
@@ -207,7 +351,12 @@ export function StatsPage() {
 
           {selectedCategory && (
             <div className="category-detail">
-              <h3>{selectedCategory} transactions</h3>
+              <h3>
+                {selectedCategory === TRANSFERS
+                  ? "Internal transfer"
+                  : selectedCategory}{" "}
+                transactions
+              </h3>
               {txnsBusy && <p>Loading...</p>}
               {txnsError && <p className="error">{txnsError}</p>}
               {!txnsBusy && !txnsError && categoryTxns.length === 0 && (
@@ -220,18 +369,20 @@ export function StatsPage() {
                       <th>Date</th>
                       <th>Merchant</th>
                       <th>Amount</th>
+                      <th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {categoryTxns.map((t) => (
-                      <tr key={t.txnId}>
-                        <td>{t.txnDate}</td>
-                        <td>{t.merchant}</td>
-                        <td className={t.amount > 0 ? "income" : ""}>
-                          {t.amount > 0 ? "+" : ""}
-                          {t.amount.toFixed(2)} {t.currency}
-                        </td>
-                      </tr>
+                      <TxnRow
+                        key={t.txnId}
+                        t={t}
+                        categories={categories}
+                        defaultCategory={
+                          selectedCategory === TRANSFERS ? "" : selectedCategory
+                        }
+                        onSaved={() => load(true)}
+                      />
                     ))}
                   </tbody>
                 </table>

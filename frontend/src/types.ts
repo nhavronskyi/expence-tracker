@@ -21,6 +21,7 @@ export interface Account {
   scope: AccountScope;
   type: AccountType;
   currency: string;
+  active: boolean;
 }
 
 export interface NewAccountRequest {
@@ -29,6 +30,20 @@ export interface NewAccountRequest {
   scope: AccountScope;
   type: AccountType;
   currency: string;
+}
+
+export interface UpdateAccountRequest {
+  iban: string;
+  label: string;
+  scope: AccountScope;
+  type: AccountType;
+  currency: string;
+  active: boolean;
+}
+
+export interface NewAccountResponse {
+  account: Account;
+  reclassifiedTransfers: number;
 }
 
 export interface NewCategoryRequest {

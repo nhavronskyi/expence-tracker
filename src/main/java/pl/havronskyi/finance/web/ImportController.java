@@ -72,4 +72,10 @@ public class ImportController {
         int changed = importService.renormalizeMerchants();
         return ResponseEntity.ok(Map.of("changed", changed));
     }
+
+    @PostMapping("/reclassify-transfers")
+    public ResponseEntity<Map<String, Integer>> reclassifyTransfers() {
+        int reclassified = importService.reclassifyTransfers();
+        return ResponseEntity.ok(Map.of("reclassified", reclassified));
+    }
 }

@@ -65,13 +65,40 @@ public class ReviewService {
         Txn txn = txns.findById(item.getTxnId())
                 .orElseThrow(() -> new IllegalArgumentException("Brak transakcji " + item.getTxnId()));
 
+        applyCategory(txn, req);
+
+        item.setStatus(ReviewStatus.RESOLVED);
+        item.setResolvedAt(Instant.now());
+        reviews.save(item);
+    }
+
+    /**
+     * Lets any transaction's category/kind be corrected directly, outside the review queue -
+     * e.g. moving a wrongly-classified internal transfer into a real expense category (or a
+     * real expense that's actually an internal transfer) from the Stats page's transaction
+     * drill-down, long after it was auto-categorized and never touched the review queue.
+     */
+    @Transactional
+    public void recategorize(Long txnId, ResolveRequest req) {
+        Txn txn = txns.findById(txnId)
+                .orElseThrow(() -> new IllegalArgumentException("Brak transakcji " + txnId));
+        applyCategory(txn, req);
+    }
+
+    private void applyCategory(Txn txn, ResolveRequest req) {
         String category = req.category() == null ? "" : req.category().trim().toUpperCase();
         if (!categories.existsByCodeIgnoreCaseAndActiveTrue(category)) {
             throw new IllegalArgumentException("Nieznana kategoria: " + req.category());
         }
 
+        TxnKind kind = req.kind() == null ? txn.getKind() : req.kind();
         txn.setCategory(category);
-        txn.setKind(req.kind() == null ? txn.getKind() : req.kind());
+        txn.setKind(kind);
+        if (kind != TxnKind.INTERNAL_TRANSFER) {
+            // Otherwise a transaction manually moved out of INTERNAL_TRANSFER keeps pointing
+            // at a transfer group whose partner leg still thinks it's paired.
+            txn.setTransferGroup(null);
+        }
         txn.setCategorySource(CategorySource.MANUAL);
         txn.setConfidence(BigDecimal.ONE);
         txn.setNeedsReview(false);
@@ -94,9 +121,5 @@ public class ReviewService {
                                 rules.save(rule);
                             });
         }
-
-        item.setStatus(ReviewStatus.RESOLVED);
-        item.setResolvedAt(Instant.now());
-        reviews.save(item);
     }
 }

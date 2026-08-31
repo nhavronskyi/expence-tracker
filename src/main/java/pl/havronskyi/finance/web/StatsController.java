@@ -57,4 +57,18 @@ public class StatsController {
         }
         return ResponseEntity.ok(statsService.transactionsForCategory(category, fromDate, toDate));
     }
+
+    /**
+     * GET /api/stats/transfers?from=2026-08-01&to=2026-08-31
+     */
+    @GetMapping("/transfers")
+    public ResponseEntity<List<CategoryTransaction>> transfers(@RequestParam String from,
+                                                                @RequestParam String to) {
+        LocalDate fromDate = LocalDate.parse(from);
+        LocalDate toDate = LocalDate.parse(to);
+        if (fromDate.isAfter(toDate)) {
+            return ResponseEntity.badRequest().build();
+        }
+        return ResponseEntity.ok(statsService.transfersForRange(fromDate, toDate));
+    }
 }

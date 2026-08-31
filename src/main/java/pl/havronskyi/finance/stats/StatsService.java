@@ -32,7 +32,20 @@ public class StatsService {
     }
 
     public List<CategoryTransaction> transactionsForCategory(String category, LocalDate from, LocalDate to) {
-        return txns.findByCategoryAndTxnDateBetween(category, from, to).stream()
+        return toCategoryTransactions(txns.findByCategoryAndTxnDateBetween(category, from, to));
+    }
+
+    /**
+     * Internal transfers are excluded from byCategory entirely, so without this there's no
+     * way to even see one, let alone move it into a real category (or move a wrongly-flagged
+     * expense into INTERNAL_TRANSFER) from the Stats page.
+     */
+    public List<CategoryTransaction> transfersForRange(LocalDate from, LocalDate to) {
+        return toCategoryTransactions(txns.findByKindAndTxnDateBetween(TxnKind.INTERNAL_TRANSFER, from, to));
+    }
+
+    private List<CategoryTransaction> toCategoryTransactions(List<Txn> list) {
+        return list.stream()
                 .sorted(Comparator.comparing(Txn::getTxnDate).reversed()
                         .thenComparing(Comparator.comparing(Txn::getId).reversed()))
                 .map(t -> new CategoryTransaction(

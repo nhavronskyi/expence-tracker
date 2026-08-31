@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
 import { getTransactionCount } from "./api";
+import { AccountsPage } from "./pages/AccountsPage";
 import { ImportPage } from "./pages/ImportPage";
 import { ReviewPage } from "./pages/ReviewPage";
 import { StatsPage } from "./pages/StatsPage";
 
-type Tab = "import" | "review" | "stats";
+type Tab = "import" | "accounts" | "review" | "stats";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "import", label: "Import" },
+  { id: "accounts", label: "Accounts" },
   { id: "review", label: "Review" },
   { id: "stats", label: "Stats" },
 ];
@@ -46,6 +48,7 @@ export default function App() {
         {tab === "import" && (
           <ImportPage onDataChanged={() => setRefreshCount((n) => n + 1)} />
         )}
+        {tab === "accounts" && <AccountsPage />}
         {tab === "review" && <ReviewPage />}
         {tab === "stats" && <StatsPage />}
       </main>

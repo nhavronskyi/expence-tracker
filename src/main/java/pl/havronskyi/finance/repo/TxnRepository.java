@@ -7,6 +7,7 @@ import pl.havronskyi.finance.domain.Txn;
 import pl.havronskyi.finance.domain.TxnKind;
 
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -38,4 +39,6 @@ public interface TxnRepository extends JpaRepository<Txn, Long> {
     List<Txn> findByKindAndTxnDateBetween(TxnKind kind, LocalDate from, LocalDate to);
 
     List<Txn> findByCategoryAndTxnDateBetween(String category, LocalDate from, LocalDate to);
+
+    List<Txn> findByKindIn(Collection<TxnKind> kinds);
 }

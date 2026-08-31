@@ -282,6 +282,29 @@ public class ImportService {
     }
 
     /**
+     * Re-runs IBAN-based transfer detection over every existing EXPENSE/INCOME row. Needed
+     * because transfer classification only runs once at import time - a transaction imported
+     * before its counterparty account was registered never gets a second chance, and stays
+     * miscategorized as a plain expense/income forever unless this runs.
+     */
+    @Transactional
+    public int reclassifyTransfers() {
+        List<Txn> candidates = txns.findByKindIn(List.of(TxnKind.EXPENSE, TxnKind.INCOME));
+        List<Txn> reclassified = new ArrayList<>();
+        for (Txn t : candidates) {
+            if (transferMatcher.markIfOwnIban(t)) {
+                t.setCategory(null);
+                reclassified.add(t);
+            }
+        }
+        if (!reclassified.isEmpty()) {
+            transferMatcher.pairLegs(reclassified);
+            txns.saveAll(reclassified);
+        }
+        return reclassified.size();
+    }
+
+    /**
      * Re-runs NBP conversion for previously-imported rows that missed it - e.g. because NBP
      * was briefly unreachable during the original import. Same code path as import-time.
      */

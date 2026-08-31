@@ -15,6 +15,19 @@ Ollama Cloud key from ollama.com/settings/keys — this app calls Ollama Cloud, 
 instance). `finance.yml` is a separate compose file for the actual homelab deployment; don't
 confuse the two.
 
+**Homelab deployment (`finance.yml`):** every push to `main` builds the image via GitHub Actions
+(`.github/workflows/docker-publish.yml`) and publishes it to
+`ghcr.io/nhavronskyi/expence-tracker:latest`. On the prod host, deploying a new version is just:
+
+```
+docker compose -f finance.yml pull
+docker compose -f finance.yml up -d
+```
+
+The GHCR package is private by default, so the prod host needs a one-time
+`docker login ghcr.io -u nhavronskyi` with a PAT that has `read:packages` scope (or make the
+package public in GitHub if that's acceptable for this repo).
+
 **Frontend dev server (hot reload):** run the backend separately (`./gradlew bootRun`, or
 `docker compose up finance-db finance-app`), then in `frontend/`: `npm install && npm run dev`.
 Vite proxies `/api` to `http://localhost:8080`, so no CORS setup is needed.

@@ -18,7 +18,7 @@ services:
       com.centurylinklabs.watchtower.enable: "false"
 
   finance-app:
-    build: .
+    image: ghcr.io/nhavronskyi/expence-tracker:latest
     container_name: finance-app
     restart: unless-stopped
     depends_on:

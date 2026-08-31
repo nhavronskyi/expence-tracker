@@ -15,18 +15,120 @@ Ollama Cloud key from ollama.com/settings/keys — this app calls Ollama Cloud, 
 instance). `finance.yml` is a separate compose file for the actual homelab deployment; don't
 confuse the two.
 
-**Homelab deployment (`finance.yml`):** every push to `main` builds the image via GitHub Actions
-(`.github/workflows/docker-publish.yml`) and publishes it to
-`ghcr.io/nhavronskyi/expence-tracker:latest`. On the prod host, deploying a new version is just:
+## Deployment (homelab, `finance.yml`)
+
+Every push to `main` runs `.github/workflows/docker-publish.yml`, which builds the `Dockerfile`
+(frontend bundled into the Spring Boot jar, same as the local Docker build) and pushes it to
+GHCR as:
+
+- `ghcr.io/nhavronskyi/expence-tracker:latest` — always the most recent `main`
+- `ghcr.io/nhavronskyi/expence-tracker:sha-<shortsha>` — pinned, for rollback
+
+`finance.yml` pulls `:latest` (`image:`, not `build:`) — the prod host never builds anything, it
+just pulls a pre-built image.
+
+### Example `finance.yml`
+
+```yaml
+services:
+  finance-db:
+    image: postgres:17-alpine
+    container_name: finance-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: finance
+      POSTGRES_USER: finance
+      POSTGRES_PASSWORD: ${FINANCE_DB_PASSWORD:?set in .env}
+    volumes:
+      - finance-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U finance -d finance"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    labels:
+      com.centurylinklabs.watchtower.enable: "false"
+
+  finance-app:
+    image: ghcr.io/nhavronskyi/expence-tracker:latest
+    container_name: finance-app
+    restart: unless-stopped
+    depends_on:
+      finance-db:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://finance-db:5432/finance
+      DB_USER: finance
+      DB_PASSWORD: ${FINANCE_DB_PASSWORD:?set in .env}
+      OLLAMA_API_KEY: ${OLLAMA_API_KEY:?set in .env}
+    ports:
+      - "127.0.0.1:8099:8080" # loopback only; external exposure through NPM
+    labels:
+      com.centurylinklabs.watchtower.enable: "false"
+
+volumes:
+  finance-db-data:
+```
+
+This is the file already committed at [`finance.yml`](finance.yml) — copy it (or adjust the
+exposed port for your host) rather than retyping it. Postgres data lives in the named volume
+`finance-db-data`, which Docker creates and manages on its own (no host directory to create or
+point at — nothing host-specific is hardcoded here). The only things read from a `.env` file
+placed next to `finance.yml` on the prod host are the two secrets:
+
+```
+# .env on the prod host, next to finance.yml — not committed
+FINANCE_DB_PASSWORD=<a real password>
+OLLAMA_API_KEY=<your Ollama Cloud key from ollama.com/settings/keys>
+```
+
+To find or back up the volume's actual data later, run `docker volume ls | grep finance-db-data`
+to get its full name (Compose prefixes it with the project/directory name), then
+`docker volume inspect <name>` for the path on disk.
+
+### One-time server setup
+
+GHCR packages are private by default, so before the first pull the prod host needs to
+authenticate once:
+
+```
+docker login ghcr.io -u nhavronskyi
+# password: a GitHub PAT (classic or fine-grained) with read:packages scope
+```
+
+The login persists in `~/.docker/config.json`, so this is a one-time step, not a per-deploy one.
+Alternatively, make the package public under github.com/nhavronskyi → Packages → expence-tracker
+→ Package settings, and skip `docker login` entirely.
+
+### Day-to-day deploy
 
 ```
 docker compose -f finance.yml pull
 docker compose -f finance.yml up -d
 ```
 
-The GHCR package is private by default, so the prod host needs a one-time
-`docker login ghcr.io -u nhavronskyi` with a PAT that has `read:packages` scope (or make the
-package public in GitHub if that's acceptable for this repo).
+`pull` fetches whatever `main` currently points `:latest` at; `up -d` recreates only
+`finance-app` (Postgres data lives in the `finance-db-data` volume and is untouched).
+
+### Rollback
+
+`:latest` always moves, so if a bad build ships, pin the previous known-good SHA instead of
+waiting on a new push. The workflow keeps `:latest` plus the last 10 `sha-` tags in GHCR (older
+ones are auto-pruned after each build), so recent rollback targets are always available:
+
+```
+docker pull ghcr.io/nhavronskyi/expence-tracker:sha-<shortsha>
+docker tag ghcr.io/nhavronskyi/expence-tracker:sha-<shortsha> ghcr.io/nhavronskyi/expence-tracker:latest
+docker compose -f finance.yml up -d
+```
+
+Find the SHA to roll back to from the commit history on `main`, or the GHCR package's version
+list on GitHub.
+
+### Watchtower
+
+Both services in `finance.yml` carry `com.centurylinklabs.watchtower.enable: "false"` —
+deployment is intentionally manual (`pull` + `up -d` above), not auto-pulled in the background.
 
 **Frontend dev server (hot reload):** run the backend separately (`./gradlew bootRun`, or
 `docker compose up finance-db finance-app`), then in `frontend/`: `npm install && npm run dev`.

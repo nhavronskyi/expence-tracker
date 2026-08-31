@@ -212,7 +212,7 @@ export function ImportPage({ onDataChanged }: { onDataChanged: () => void }) {
         <div className="progress">
           <div className="row" style={{ marginBottom: 0 }}>
             <strong>{PHASE_LABELS[job.phase] ?? job.phase}</strong>
-            {job.phase === "CATEGORIZING" && job.total > 0 && (
+            {job.total > 0 && (
               <span>
                 {job.processed} / {job.total}
               </span>
@@ -221,7 +221,7 @@ export function ImportPage({ onDataChanged }: { onDataChanged: () => void }) {
               Cancel
             </button>
           </div>
-          {job.phase === "CATEGORIZING" && job.total > 0 && (
+          {job.total > 0 && (
             <div className="progress-bar">
               <div
                 className="progress-bar-fill"

@@ -105,13 +105,17 @@ public class ImportService {
 
             List<ParsedRow> rows = parser.parse(new ByteArrayInputStream(content));
             batch.setRowCount(rows.size());
+            job.setTotal(rows.size());
 
             // seq distinguishes identical transactions on the same day
             Map<String, Integer> seqCounter = new HashMap<>();
             List<Txn> inserted = new ArrayList<>();
             int duplicates = 0;
+            int rowsSeen = 0;
 
             for (ParsedRow row : rows) {
+                rowsSeen++;
+                job.setProcessed(rowsSeen);
                 RawTransaction raw = new RawTransaction();
                 raw.setBatchId(batch.getId());
                 raw.setLineNo(row.lineNo());
@@ -209,6 +213,7 @@ public class ImportService {
                 .filter(t -> t.getKind() == TxnKind.EXPENSE || t.getKind() == TxnKind.INCOME)
                 .toList();
         job.setTotal(pending.size());
+        job.setProcessed(0);
         if (pending.isEmpty()) return 0;
 
         Map<Long, Txn> byId = pending.stream().collect(Collectors.toMap(Txn::getId, Function.identity()));

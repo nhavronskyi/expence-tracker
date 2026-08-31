@@ -26,8 +26,11 @@ import static org.mockito.Mockito.when;
 
 class ImportServiceTest {
 
+    private static final Long WORKSPACE_ID = 1L;
+
     private static Account account(String iban) {
         Account a = new Account();
+        a.setWorkspaceId(WORKSPACE_ID);
         a.setIban(iban);
         a.setLabel("acc");
         a.setScope(AccountScope.PERSONAL);
@@ -38,6 +41,7 @@ class ImportServiceTest {
 
     private static Txn expense(long accountId, long amountMinor, String counterpartyIban, String category) {
         Txn t = new Txn();
+        t.setWorkspaceId(WORKSPACE_ID);
         t.setAccountId(accountId);
         t.setTxnDate(LocalDate.of(2026, 8, 5));
         t.setAmountMinor(amountMinor);
@@ -59,13 +63,13 @@ class ImportServiceTest {
         Account savings = account(savingsIban);
 
         AccountRepository accounts = mock(AccountRepository.class);
-        when(accounts.findAll()).thenReturn(List.of(savings));
+        when(accounts.findByWorkspaceId(WORKSPACE_ID)).thenReturn(List.of(savings));
 
         TxnRepository txns = mock(TxnRepository.class);
         Txn misclassified = expense(2L, -300000, savingsIban, "SAVINGS");
-        when(txns.findByKindIn(List.of(TxnKind.EXPENSE, TxnKind.INCOME)))
+        when(txns.findByWorkspaceIdAndKindIn(WORKSPACE_ID, List.of(TxnKind.EXPENSE, TxnKind.INCOME)))
                 .thenReturn(List.of(misclassified));
-        when(txns.findTransferCandidates(300000L, 2L,
+        when(txns.findTransferCandidates(WORKSPACE_ID, 300000L, 2L,
                 misclassified.getTxnDate().minusDays(3), misclassified.getTxnDate().plusDays(3)))
                 .thenReturn(List.of());
 
@@ -86,7 +90,7 @@ class ImportServiceTest {
                 mock(ExchangeRateService.class),
                 mock(ImportJobRegistry.class));
 
-        int reclassified = importService.reclassifyTransfers();
+        int reclassified = importService.reclassifyTransfers(WORKSPACE_ID);
 
         assertEquals(1, reclassified);
         assertEquals(TxnKind.INTERNAL_TRANSFER, misclassified.getKind());

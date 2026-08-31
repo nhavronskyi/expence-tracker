@@ -8,7 +8,10 @@ import java.util.List;
 import java.util.Optional;
 
 public interface MerchantRuleRepository extends JpaRepository<MerchantRule, Long> {
-    List<MerchantRule> findAllByOrderByPriorityAsc();
+    List<MerchantRule> findAllByWorkspaceIdOrderByPriorityAsc(Long workspaceId);
 
-    Optional<MerchantRule> findByMatchTypeAndPattern(MatchType matchType, String pattern);
+    Optional<MerchantRule> findByWorkspaceIdAndMatchTypeAndPattern(Long workspaceId, MatchType matchType,
+                                                                    String pattern);
+
+    void deleteAllByWorkspaceId(Long workspaceId);
 }

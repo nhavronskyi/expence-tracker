@@ -12,6 +12,9 @@ public class ReviewItem {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "workspace_id", nullable = false)
+    private Long workspaceId;
+
     @Column(name = "txn_id", nullable = false, unique = true)
     private Long txnId;
 
@@ -33,6 +36,14 @@ public class ReviewItem {
 
     public Long getId() {
         return id;
+    }
+
+    public Long getWorkspaceId() {
+        return workspaceId;
+    }
+
+    public void setWorkspaceId(Long workspaceId) {
+        this.workspaceId = workspaceId;
     }
 
     public Long getTxnId() {

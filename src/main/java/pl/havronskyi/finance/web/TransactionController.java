@@ -4,6 +4,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import pl.havronskyi.finance.review.ResolveRequest;
@@ -20,8 +21,9 @@ public class TransactionController {
     }
 
     @PatchMapping("/{id}")
-    public ResponseEntity<Void> recategorize(@PathVariable Long id, @RequestBody ResolveRequest request) {
-        reviewService.recategorize(id, request);
+    public ResponseEntity<Void> recategorize(@RequestHeader("X-Workspace-Id") Long workspaceId,
+                                              @PathVariable Long id, @RequestBody ResolveRequest request) {
+        reviewService.recategorize(id, request, workspaceId);
         return ResponseEntity.noContent().build();
     }
 }

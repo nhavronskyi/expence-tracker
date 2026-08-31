@@ -27,12 +27,14 @@ public class StatsService {
         return new BigDecimal(minor).movePointLeft(2);
     }
 
-    public long totalTransactionCount() {
-        return txns.count();
+    public long totalTransactionCount(Long workspaceId) {
+        return txns.countByWorkspaceId(workspaceId);
     }
 
-    public List<CategoryTransaction> transactionsForCategory(String category, LocalDate from, LocalDate to) {
-        return toCategoryTransactions(txns.findByCategoryAndTxnDateBetween(category, from, to));
+    public List<CategoryTransaction> transactionsForCategory(Long workspaceId, String category, LocalDate from,
+                                                               LocalDate to) {
+        return toCategoryTransactions(txns.findByWorkspaceIdAndCategoryAndTxnDateBetween(workspaceId, category, from,
+                to));
     }
 
     /**
@@ -40,8 +42,9 @@ public class StatsService {
      * way to even see one, let alone move it into a real category (or move a wrongly-flagged
      * expense into INTERNAL_TRANSFER) from the Stats page.
      */
-    public List<CategoryTransaction> transfersForRange(LocalDate from, LocalDate to) {
-        return toCategoryTransactions(txns.findByKindAndTxnDateBetween(TxnKind.INTERNAL_TRANSFER, from, to));
+    public List<CategoryTransaction> transfersForRange(Long workspaceId, LocalDate from, LocalDate to) {
+        return toCategoryTransactions(txns.findByWorkspaceIdAndKindAndTxnDateBetween(workspaceId,
+                TxnKind.INTERNAL_TRANSFER, from, to));
     }
 
     private List<CategoryTransaction> toCategoryTransactions(List<Txn> list) {
@@ -74,8 +77,8 @@ public class StatsService {
      * credit card billing cycle - otherwise "October expenses" would mean the
      * period from the 12th to the 11th, and nobody trusts the numbers.
      */
-    public PeriodReport forRange(LocalDate from, LocalDate to) {
-        List<Txn> all = txns.findByTxnDateBetween(from, to);
+    public PeriodReport forRange(Long workspaceId, LocalDate from, LocalDate to) {
+        List<Txn> all = txns.findByWorkspaceIdAndTxnDateBetween(workspaceId, from, to);
 
         long transfers = 0;
         Map<String, Long> byCategory = new TreeMap<>();

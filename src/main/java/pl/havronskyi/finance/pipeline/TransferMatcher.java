@@ -47,11 +47,11 @@ public class TransferMatcher {
      * Step 1 - deterministic: the counterparty is one of my own accounts.
      * Works immediately, even when the other leg hasn't been imported yet.
      */
-    public boolean markIfOwnIban(Txn txn) {
+    public boolean markIfOwnIban(Txn txn, Long workspaceId) {
         String iban = normalize(txn.getCounterpartyIban());
         if (iban.isBlank()) return false;
 
-        Set<String> ownIbans = accounts.findAll().stream()
+        Set<String> ownIbans = accounts.findByWorkspaceId(workspaceId).stream()
                 .map(a -> normalize(a.getIban()))
                 .filter(s -> !s.isBlank())
                 .collect(Collectors.toSet());
@@ -70,7 +70,7 @@ public class TransferMatcher {
      * within a window of a few days get a shared transferGroup.
      * Needed because credit card exports often don't include the other side's IBAN.
      */
-    public void pairLegs(List<Txn> batch) {
+    public void pairLegs(List<Txn> batch, Long workspaceId) {
         int window = props.transferMatchWindowDays();
 
         for (Txn txn : batch) {
@@ -78,6 +78,7 @@ public class TransferMatcher {
             if (txn.getKind() != TxnKind.INTERNAL_TRANSFER) continue;
 
             List<Txn> candidates = txns.findTransferCandidates(
+                    workspaceId,
                     -txn.getAmountMinor(),
                     txn.getAccountId(),
                     txn.getTxnDate().minusDays(window),

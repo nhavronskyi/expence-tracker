@@ -61,8 +61,9 @@ public class LlmCategorizer {
         return s == null ? "" : s.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", " ");
     }
 
-    public List<CategorySuggestion> classify(List<Txn> txns, IntConsumer onProgress, BooleanSupplier cancelled) {
-        List<Category> active = categories.findByActiveTrueOrderByLabelAsc();
+    public List<CategorySuggestion> classify(List<Txn> txns, Long workspaceId, IntConsumer onProgress,
+                                              BooleanSupplier cancelled) {
+        List<Category> active = categories.findByWorkspaceIdAndActiveTrueOrderByLabelAsc(workspaceId);
         String catalog = active.stream()
                 .map(c -> "- " + c.getCode() + " (" + c.getLabel() + "): " + c.getDefinition())
                 .collect(Collectors.joining("\n"));

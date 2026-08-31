@@ -10,7 +10,9 @@ public class Account {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(unique = true)
+    @Column(name = "workspace_id", nullable = false)
+    private Long workspaceId;
+
     private String iban;
 
     @Column(nullable = false)
@@ -32,6 +34,14 @@ public class Account {
 
     public Long getId() {
         return id;
+    }
+
+    public Long getWorkspaceId() {
+        return workspaceId;
+    }
+
+    public void setWorkspaceId(Long workspaceId) {
+        this.workspaceId = workspaceId;
     }
 
     public String getIban() {

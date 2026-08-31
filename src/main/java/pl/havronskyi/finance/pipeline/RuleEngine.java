@@ -21,11 +21,11 @@ public class RuleEngine {
         this.rules = rules;
     }
 
-    public Optional<MerchantRule> match(Txn txn) {
+    public Optional<MerchantRule> match(Txn txn, Long workspaceId) {
         String norm = txn.getMerchantNorm() == null ? "" : txn.getMerchantNorm();
         if (norm.isBlank()) return Optional.empty();
 
-        List<MerchantRule> all = rules.findAllByOrderByPriorityAsc();
+        List<MerchantRule> all = rules.findAllByWorkspaceIdOrderByPriorityAsc(workspaceId);
         for (MerchantRule r : all) {
             if (matches(r, norm)) {
                 r.setHitCount(r.getHitCount() + 1);

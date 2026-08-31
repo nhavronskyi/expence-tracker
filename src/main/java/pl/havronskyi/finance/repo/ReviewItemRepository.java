@@ -7,5 +7,7 @@ import pl.havronskyi.finance.domain.ReviewStatus;
 import java.util.List;
 
 public interface ReviewItemRepository extends JpaRepository<ReviewItem, Long> {
-    List<ReviewItem> findByStatusOrderByIdAsc(ReviewStatus status);
+    List<ReviewItem> findByWorkspaceIdAndStatusOrderByIdAsc(Long workspaceId, ReviewStatus status);
+
+    void deleteAllByWorkspaceId(Long workspaceId);
 }

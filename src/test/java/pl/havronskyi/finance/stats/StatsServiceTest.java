@@ -16,8 +16,11 @@ import static org.mockito.Mockito.when;
 
 class StatsServiceTest {
 
+    private static final Long WORKSPACE_ID = 1L;
+
     private static Txn transfer(long accountId, long amountMinor, UUID transferGroup) {
         Txn t = new Txn();
+        t.setWorkspaceId(WORKSPACE_ID);
         t.setAccountId(accountId);
         t.setTxnDate(LocalDate.of(2026, 8, 15));
         t.setAmountMinor(amountMinor);
@@ -39,10 +42,10 @@ class StatsServiceTest {
         TxnRepository txns = mock(TxnRepository.class);
         LocalDate from = LocalDate.of(2026, 8, 1);
         LocalDate to = LocalDate.of(2026, 8, 31);
-        when(txns.findByTxnDateBetween(from, to)).thenReturn(List.of(outgoing, incoming));
+        when(txns.findByWorkspaceIdAndTxnDateBetween(WORKSPACE_ID, from, to)).thenReturn(List.of(outgoing, incoming));
 
         StatsService service = new StatsService(txns);
-        PeriodReport report = service.forRange(from, to);
+        PeriodReport report = service.forRange(WORKSPACE_ID, from, to);
 
         assertTrue(report.warnings().isEmpty(),
                 "Paired transfer across accounts must not be reported as orphaned");
@@ -57,10 +60,10 @@ class StatsServiceTest {
         TxnRepository txns = mock(TxnRepository.class);
         LocalDate from = LocalDate.of(2026, 8, 1);
         LocalDate to = LocalDate.of(2026, 8, 31);
-        when(txns.findByTxnDateBetween(from, to)).thenReturn(List.of(outgoing));
+        when(txns.findByWorkspaceIdAndTxnDateBetween(WORKSPACE_ID, from, to)).thenReturn(List.of(outgoing));
 
         StatsService service = new StatsService(txns);
-        PeriodReport report = service.forRange(from, to);
+        PeriodReport report = service.forRange(WORKSPACE_ID, from, to);
 
         assertEquals(1, report.warnings().size());
         assertTrue(report.warnings().get(0).contains("bez pary"));

@@ -24,8 +24,11 @@ import static org.mockito.Mockito.when;
 
 class ReviewServiceTest {
 
+    private static final Long WORKSPACE_ID = 1L;
+
     private static Txn txn(long id, TxnKind kind, UUID transferGroup) {
         Txn t = new Txn();
+        t.setWorkspaceId(WORKSPACE_ID);
         t.setAccountId(1L);
         t.setTxnDate(LocalDate.of(2026, 8, 5));
         t.setAmountMinor(-3180);
@@ -52,12 +55,12 @@ class ReviewServiceTest {
         when(txns.findById(1L)).thenReturn(Optional.of(t));
 
         CategoryRepository categories = mock(CategoryRepository.class);
-        when(categories.existsByCodeIgnoreCaseAndActiveTrue("HOBBY")).thenReturn(true);
+        when(categories.existsByWorkspaceIdAndCodeIgnoreCaseAndActiveTrue(WORKSPACE_ID, "HOBBY")).thenReturn(true);
 
         ReviewItemRepository reviews = mock(ReviewItemRepository.class);
         ReviewService service = new ReviewService(reviews, txns, mock(MerchantRuleRepository.class), categories);
 
-        service.recategorize(1L, new ResolveRequest("hobby", TxnKind.EXPENSE, false));
+        service.recategorize(1L, new ResolveRequest("hobby", TxnKind.EXPENSE, false), WORKSPACE_ID);
 
         assertEquals("HOBBY", t.getCategory());
         assertEquals(TxnKind.EXPENSE, t.getKind());
@@ -73,10 +76,10 @@ class ReviewServiceTest {
         when(txns.findById(2L)).thenReturn(Optional.of(t));
 
         CategoryRepository categories = mock(CategoryRepository.class);
-        when(categories.existsByCodeIgnoreCaseAndActiveTrue("HOBBY")).thenReturn(true);
+        when(categories.existsByWorkspaceIdAndCodeIgnoreCaseAndActiveTrue(WORKSPACE_ID, "HOBBY")).thenReturn(true);
 
         ReviewService service = service(txns, categories);
-        service.recategorize(2L, new ResolveRequest("HOBBY", TxnKind.EXPENSE, false));
+        service.recategorize(2L, new ResolveRequest("HOBBY", TxnKind.EXPENSE, false), WORKSPACE_ID);
 
         assertEquals(TxnKind.EXPENSE, t.getKind());
         assertNull(t.getTransferGroup());
@@ -90,6 +93,18 @@ class ReviewServiceTest {
         ReviewService service = service(txns, mock(CategoryRepository.class));
 
         assertThrows(IllegalArgumentException.class,
-                () -> service.recategorize(99L, new ResolveRequest("HOBBY", TxnKind.EXPENSE, false)));
+                () -> service.recategorize(99L, new ResolveRequest("HOBBY", TxnKind.EXPENSE, false), WORKSPACE_ID));
+    }
+
+    @Test
+    void recategorizingTxnFromAnotherWorkspaceThrows() {
+        Txn t = txn(3L, TxnKind.EXPENSE, null);
+        TxnRepository txns = mock(TxnRepository.class);
+        when(txns.findById(3L)).thenReturn(Optional.of(t));
+
+        ReviewService service = service(txns, mock(CategoryRepository.class));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> service.recategorize(3L, new ResolveRequest("HOBBY", TxnKind.EXPENSE, false), 999L));
     }
 }

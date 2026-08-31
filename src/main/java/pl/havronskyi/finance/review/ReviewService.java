@@ -30,8 +30,8 @@ public class ReviewService {
         this.categories = categories;
     }
 
-    public List<ReviewCard> open() {
-        List<ReviewItem> items = reviews.findByStatusOrderByIdAsc(ReviewStatus.OPEN);
+    public List<ReviewCard> open(Long workspaceId) {
+        List<ReviewItem> items = reviews.findByWorkspaceIdAndStatusOrderByIdAsc(workspaceId, ReviewStatus.OPEN);
         Map<Long, Txn> txnById = txns.findAllById(items.stream().map(ReviewItem::getTxnId).toList()).stream()
                 .collect(Collectors.toMap(Txn::getId, t -> t));
 
@@ -59,9 +59,12 @@ public class ReviewService {
      * it turns into a rule. Otherwise the queue would never shrink.
      */
     @Transactional
-    public void resolve(Long reviewId, ResolveRequest req) {
+    public void resolve(Long reviewId, ResolveRequest req, Long workspaceId) {
         ReviewItem item = reviews.findById(reviewId)
                 .orElseThrow(() -> new IllegalArgumentException("Brak pozycji review " + reviewId));
+        if (!item.getWorkspaceId().equals(workspaceId)) {
+            throw new IllegalArgumentException("Brak pozycji review " + reviewId);
+        }
         Txn txn = txns.findById(item.getTxnId())
                 .orElseThrow(() -> new IllegalArgumentException("Brak transakcji " + item.getTxnId()));
 
@@ -79,15 +82,18 @@ public class ReviewService {
      * drill-down, long after it was auto-categorized and never touched the review queue.
      */
     @Transactional
-    public void recategorize(Long txnId, ResolveRequest req) {
+    public void recategorize(Long txnId, ResolveRequest req, Long workspaceId) {
         Txn txn = txns.findById(txnId)
                 .orElseThrow(() -> new IllegalArgumentException("Brak transakcji " + txnId));
+        if (!txn.getWorkspaceId().equals(workspaceId)) {
+            throw new IllegalArgumentException("Brak transakcji " + txnId);
+        }
         applyCategory(txn, req);
     }
 
     private void applyCategory(Txn txn, ResolveRequest req) {
         String category = req.category() == null ? "" : req.category().trim().toUpperCase();
-        if (!categories.existsByCodeIgnoreCaseAndActiveTrue(category)) {
+        if (!categories.existsByWorkspaceIdAndCodeIgnoreCaseAndActiveTrue(txn.getWorkspaceId(), category)) {
             throw new IllegalArgumentException("Nieznana kategoria: " + req.category());
         }
 
@@ -105,7 +111,7 @@ public class ReviewService {
         txns.save(txn);
 
         if (req.learnRule() && txn.getMerchantNorm() != null && !txn.getMerchantNorm().isBlank()) {
-            rules.findByMatchTypeAndPattern(MatchType.EXACT, txn.getMerchantNorm())
+            rules.findByWorkspaceIdAndMatchTypeAndPattern(txn.getWorkspaceId(), MatchType.EXACT, txn.getMerchantNorm())
                     .ifPresentOrElse(
                             existing -> {
                                 existing.setCategory(category);
@@ -114,6 +120,7 @@ public class ReviewService {
                             },
                             () -> {
                                 MerchantRule rule = new MerchantRule();
+                                rule.setWorkspaceId(txn.getWorkspaceId());
                                 rule.setMatchType(MatchType.EXACT);
                                 rule.setPattern(txn.getMerchantNorm());
                                 rule.setCategory(category);

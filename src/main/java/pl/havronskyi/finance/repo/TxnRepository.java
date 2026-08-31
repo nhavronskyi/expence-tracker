@@ -17,28 +17,37 @@ public interface TxnRepository extends JpaRepository<Txn, Long> {
 
     boolean existsByDedupKey(String dedupKey);
 
-    List<Txn> findByTxnDateBetween(LocalDate from, LocalDate to);
+    long countByWorkspaceId(Long workspaceId);
 
-    List<Txn> findByAmountPlnMinorIsNullAndCurrencyNot(String currency);
+    List<Txn> findAllByWorkspaceId(Long workspaceId);
+
+    List<Txn> findByWorkspaceIdAndTxnDateBetween(Long workspaceId, LocalDate from, LocalDate to);
+
+    List<Txn> findByWorkspaceIdAndAmountPlnMinorIsNullAndCurrencyNot(Long workspaceId, String currency);
 
     /**
      * Candidates for pairing the other leg of an internal transfer.
      */
     @Query("""
             select t from Txn t
-            where t.transferGroup is null
+            where t.workspaceId = :workspaceId
+              and t.transferGroup is null
               and t.amountMinor = :amount
               and t.accountId <> :accountId
               and t.txnDate between :from and :to
             """)
-    List<Txn> findTransferCandidates(@Param("amount") long amount,
+    List<Txn> findTransferCandidates(@Param("workspaceId") Long workspaceId,
+                                     @Param("amount") long amount,
                                      @Param("accountId") Long accountId,
                                      @Param("from") LocalDate from,
                                      @Param("to") LocalDate to);
 
-    List<Txn> findByKindAndTxnDateBetween(TxnKind kind, LocalDate from, LocalDate to);
+    List<Txn> findByWorkspaceIdAndKindAndTxnDateBetween(Long workspaceId, TxnKind kind, LocalDate from, LocalDate to);
 
-    List<Txn> findByCategoryAndTxnDateBetween(String category, LocalDate from, LocalDate to);
+    List<Txn> findByWorkspaceIdAndCategoryAndTxnDateBetween(Long workspaceId, String category, LocalDate from,
+                                                             LocalDate to);
 
-    List<Txn> findByKindIn(Collection<TxnKind> kinds);
+    List<Txn> findByWorkspaceIdAndKindIn(Long workspaceId, Collection<TxnKind> kinds);
+
+    void deleteAllByWorkspaceId(Long workspaceId);
 }

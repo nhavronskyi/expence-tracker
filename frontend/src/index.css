@@ -59,6 +59,13 @@ nav {
   margin-bottom: 1rem;
 }
 
+.workspace-switcher {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
 button {
   padding: 0.4rem 0.9rem;
   border: 1px solid #8884;

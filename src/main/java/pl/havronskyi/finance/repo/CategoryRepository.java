@@ -7,9 +7,13 @@ import java.util.List;
 
 public interface CategoryRepository extends JpaRepository<Category, Long> {
 
-    List<Category> findByActiveTrueOrderByLabelAsc();
+    List<Category> findByWorkspaceIdOrderByLabelAsc(Long workspaceId);
 
-    boolean existsByCodeIgnoreCase(String code);
+    List<Category> findByWorkspaceIdAndActiveTrueOrderByLabelAsc(Long workspaceId);
 
-    boolean existsByCodeIgnoreCaseAndActiveTrue(String code);
+    boolean existsByWorkspaceIdAndCodeIgnoreCase(Long workspaceId, String code);
+
+    boolean existsByWorkspaceIdAndCodeIgnoreCaseAndActiveTrue(Long workspaceId, String code);
+
+    void deleteAllByWorkspaceId(Long workspaceId);
 }

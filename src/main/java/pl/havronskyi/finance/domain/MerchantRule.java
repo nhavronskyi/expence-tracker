@@ -16,6 +16,9 @@ public class MerchantRule {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "workspace_id", nullable = false)
+    private Long workspaceId;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "match_type", nullable = false, length = 16)
     private MatchType matchType;
@@ -41,6 +44,14 @@ public class MerchantRule {
 
     public Long getId() {
         return id;
+    }
+
+    public Long getWorkspaceId() {
+        return workspaceId;
+    }
+
+    public void setWorkspaceId(Long workspaceId) {
+        this.workspaceId = workspaceId;
     }
 
     public MatchType getMatchType() {

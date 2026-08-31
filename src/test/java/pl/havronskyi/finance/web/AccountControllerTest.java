@@ -19,9 +19,12 @@ import static org.mockito.Mockito.when;
 
 class AccountControllerTest {
 
+    private static final Long WORKSPACE_ID = 1L;
+
     private static Account account(long id, String iban) {
         Account a = new Account();
         ReflectionTestUtils.setField(a, "id", id);
+        a.setWorkspaceId(WORKSPACE_ID);
         a.setIban(iban);
         a.setLabel("acc-" + id);
         a.setScope(AccountScope.PERSONAL);
@@ -45,19 +48,19 @@ class AccountControllerTest {
         Account existing = account(1L, null);
         AccountRepository accounts = mock(AccountRepository.class);
         when(accounts.findById(1L)).thenReturn(Optional.of(existing));
-        when(accounts.findByIban("NEWIBAN")).thenReturn(Optional.empty());
+        when(accounts.findByWorkspaceIdAndIban(WORKSPACE_ID, "NEWIBAN")).thenReturn(Optional.empty());
         when(accounts.save(existing)).thenReturn(existing);
 
         ImportService importService = mock(ImportService.class);
-        when(importService.reclassifyTransfers()).thenReturn(2);
+        when(importService.reclassifyTransfers(WORKSPACE_ID)).thenReturn(2);
 
         AccountController controller = new AccountController(accounts, importService);
-        ResponseEntity<NewAccountResponse> res = controller.update(1L, request("NEWIBAN"));
+        ResponseEntity<NewAccountResponse> res = controller.update(WORKSPACE_ID, 1L, request("NEWIBAN"));
 
         assertEquals(200, res.getStatusCode().value());
         assertEquals(2, res.getBody().reclassifiedTransfers());
         assertEquals("NEWIBAN", existing.getIban());
-        verify(importService).reclassifyTransfers();
+        verify(importService).reclassifyTransfers(WORKSPACE_ID);
     }
 
     @Test
@@ -66,14 +69,14 @@ class AccountControllerTest {
         Account other = account(2L, "TAKENIBAN");
         AccountRepository accounts = mock(AccountRepository.class);
         when(accounts.findById(1L)).thenReturn(Optional.of(existing));
-        when(accounts.findByIban("TAKENIBAN")).thenReturn(Optional.of(other));
+        when(accounts.findByWorkspaceIdAndIban(WORKSPACE_ID, "TAKENIBAN")).thenReturn(Optional.of(other));
 
         ImportService importService = mock(ImportService.class);
         AccountController controller = new AccountController(accounts, importService);
-        ResponseEntity<NewAccountResponse> res = controller.update(1L, request("TAKENIBAN"));
+        ResponseEntity<NewAccountResponse> res = controller.update(WORKSPACE_ID, 1L, request("TAKENIBAN"));
 
         assertEquals(409, res.getStatusCode().value());
-        verify(importService, never()).reclassifyTransfers();
+        verify(importService, never()).reclassifyTransfers(WORKSPACE_ID);
     }
 
     @Test
@@ -82,7 +85,19 @@ class AccountControllerTest {
         when(accounts.findById(99L)).thenReturn(Optional.empty());
 
         AccountController controller = new AccountController(accounts, mock(ImportService.class));
-        ResponseEntity<NewAccountResponse> res = controller.update(99L, request("IBAN"));
+        ResponseEntity<NewAccountResponse> res = controller.update(WORKSPACE_ID, 99L, request("IBAN"));
+
+        assertEquals(404, res.getStatusCode().value());
+    }
+
+    @Test
+    void updatingAccountFromAnotherWorkspaceReturnsNotFound() {
+        Account existing = account(1L, "OLDIBAN");
+        AccountRepository accounts = mock(AccountRepository.class);
+        when(accounts.findById(1L)).thenReturn(Optional.of(existing));
+
+        AccountController controller = new AccountController(accounts, mock(ImportService.class));
+        ResponseEntity<NewAccountResponse> res = controller.update(999L, 1L, request("NEWIBAN"));
 
         assertEquals(404, res.getStatusCode().value());
     }

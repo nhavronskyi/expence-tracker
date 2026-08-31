@@ -15,7 +15,10 @@ public class Category {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true, length = 32)
+    @Column(name = "workspace_id", nullable = false)
+    private Long workspaceId;
+
+    @Column(nullable = false, length = 32)
     private String code;
 
     @Column(nullable = false, length = 120)
@@ -29,6 +32,14 @@ public class Category {
 
     public Long getId() {
         return id;
+    }
+
+    public Long getWorkspaceId() {
+        return workspaceId;
+    }
+
+    public void setWorkspaceId(Long workspaceId) {
+        this.workspaceId = workspaceId;
     }
 
     public String getCode() {

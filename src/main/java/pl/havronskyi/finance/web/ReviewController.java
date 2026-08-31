@@ -19,13 +19,14 @@ public class ReviewController {
     }
 
     @GetMapping
-    public List<ReviewCard> open() {
-        return reviewService.open();
+    public List<ReviewCard> open(@RequestHeader("X-Workspace-Id") Long workspaceId) {
+        return reviewService.open(workspaceId);
     }
 
     @PostMapping("/{id}")
-    public ResponseEntity<Void> resolve(@PathVariable Long id, @RequestBody ResolveRequest request) {
-        reviewService.resolve(id, request);
+    public ResponseEntity<Void> resolve(@RequestHeader("X-Workspace-Id") Long workspaceId,
+                                         @PathVariable Long id, @RequestBody ResolveRequest request) {
+        reviewService.resolve(id, request, workspaceId);
         return ResponseEntity.noContent().build();
     }
 }

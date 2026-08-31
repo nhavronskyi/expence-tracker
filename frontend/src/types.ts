@@ -1,3 +1,13 @@
+export interface Workspace {
+  id: number;
+  name: string;
+  createdAt: string;
+}
+
+export interface NewWorkspaceRequest {
+  name: string;
+}
+
 // Categories are user-extensible (added from the app), so this is just a string,
 // not a fixed union - the valid set lives in the `category` table, fetched via
 // getCategories().
@@ -10,8 +20,17 @@ export type AccountScope = "PERSONAL" | "BUSINESS";
 export type AccountType = "CURRENT" | "CREDIT_CARD";
 
 export interface CategoryOption {
+  id: number;
   name: Category;
   label: string;
+  definition: string;
+  active: boolean;
+}
+
+export interface UpdateCategoryRequest {
+  label: string;
+  definition: string;
+  active: boolean;
 }
 
 export interface Account {

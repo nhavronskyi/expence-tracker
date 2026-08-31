@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -29,8 +30,9 @@ public class AccountController {
     }
 
     @GetMapping
-    public List<AccountDto> list(@RequestParam(defaultValue = "false") boolean includeInactive) {
-        return accounts.findAll().stream()
+    public List<AccountDto> list(@RequestHeader("X-Workspace-Id") Long workspaceId,
+                                  @RequestParam(defaultValue = "false") boolean includeInactive) {
+        return accounts.findByWorkspaceId(workspaceId).stream()
                 .filter(a -> includeInactive || a.isActive())
                 .sorted(Comparator.comparing(Account::getLabel))
                 .map(this::toDto)
@@ -45,12 +47,14 @@ public class AccountController {
      * separate step to remember.
      */
     @PostMapping
-    public ResponseEntity<NewAccountResponse> create(@RequestBody NewAccountRequest req) {
+    public ResponseEntity<NewAccountResponse> create(@RequestHeader("X-Workspace-Id") Long workspaceId,
+                                                       @RequestBody NewAccountRequest req) {
         if (req.label() == null || req.label().isBlank() || req.scope() == null || req.type() == null) {
             return ResponseEntity.badRequest().build();
         }
 
         Account a = new Account();
+        a.setWorkspaceId(workspaceId);
         a.setLabel(req.label().trim());
         a.setIban(normalizeIban(req.iban()));
         a.setScope(req.scope());
@@ -58,7 +62,7 @@ public class AccountController {
         a.setCurrency(normalizeCurrency(req.currency()));
         a.setActive(true);
 
-        return ResponseEntity.ok(saveAndReclassify(a));
+        return ResponseEntity.ok(saveAndReclassify(a, workspaceId));
     }
 
     /**
@@ -69,17 +73,20 @@ public class AccountController {
      * toggle endpoint, since "active" is just another editable field.
      */
     @PatchMapping("/{id}")
-    public ResponseEntity<NewAccountResponse> update(@PathVariable Long id, @RequestBody UpdateAccountRequest req) {
+    public ResponseEntity<NewAccountResponse> update(@RequestHeader("X-Workspace-Id") Long workspaceId,
+                                                       @PathVariable Long id, @RequestBody UpdateAccountRequest req) {
         if (req.label() == null || req.label().isBlank() || req.scope() == null || req.type() == null) {
             return ResponseEntity.badRequest().build();
         }
         Account a = accounts.findById(id).orElse(null);
-        if (a == null) {
+        if (a == null || !a.getWorkspaceId().equals(workspaceId)) {
             return ResponseEntity.notFound().build();
         }
 
         String iban = normalizeIban(req.iban());
-        if (iban != null && accounts.findByIban(iban).filter(other -> !other.getId().equals(id)).isPresent()) {
+        if (iban != null
+                && accounts.findByWorkspaceIdAndIban(workspaceId, iban).filter(other -> !other.getId().equals(id))
+                        .isPresent()) {
             return ResponseEntity.status(409).build();
         }
 
@@ -90,12 +97,12 @@ public class AccountController {
         a.setCurrency(normalizeCurrency(req.currency()));
         a.setActive(req.active());
 
-        return ResponseEntity.ok(saveAndReclassify(a));
+        return ResponseEntity.ok(saveAndReclassify(a, workspaceId));
     }
 
-    private NewAccountResponse saveAndReclassify(Account a) {
+    private NewAccountResponse saveAndReclassify(Account a, Long workspaceId) {
         Account saved = accounts.save(a);
-        int reclassified = importService.reclassifyTransfers();
+        int reclassified = importService.reclassifyTransfers(workspaceId);
         return new NewAccountResponse(toDto(saved), reclassified);
     }
 

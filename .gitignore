@@ -53,6 +53,7 @@ msbuild.wrn
 
 # Package Files #
 *.jar
+!gradle/wrapper/
 *.war
 *.nar
 *.ear

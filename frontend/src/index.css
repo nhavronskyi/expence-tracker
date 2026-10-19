@@ -263,3 +263,86 @@ button.danger {
   color: #ef4444;
   border-color: #ef4444;
 }
+
+@media (max-width: 640px) {
+  .app {
+    padding: 0.75rem;
+  }
+
+  header {
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    padding-bottom: 0.75rem;
+    margin-bottom: 1rem;
+  }
+
+  nav {
+    order: 3;
+    flex: 1 0 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tab {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  .workspace-switcher {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    min-width: 0;
+  }
+
+  .txn-count {
+    order: 4;
+    flex: 1 0 100%;
+    margin-left: 0;
+  }
+
+  button,
+  .tab {
+    min-height: 40px;
+  }
+
+  select,
+  input {
+    font-size: 16px;
+    min-height: 40px;
+    box-sizing: border-box;
+  }
+
+  .row > input,
+  .row > select {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  table.summary {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  table.summary td,
+  table.summary th {
+    white-space: nowrap;
+  }
+
+  .category-detail,
+  .review-item,
+  .new-account,
+  .progress {
+    padding: 0.75rem;
+  }
+
+  .chip {
+    white-space: normal;
+  }
+}
